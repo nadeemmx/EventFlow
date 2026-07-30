@@ -1,0 +1,170 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 222 47% 11%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 38 92% 50%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 38 92% 50%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 142 50% 42%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 222 47% 11%;
+    --border: 210 40% 90%;
+    --input: 210 40% 90%;
+    --ring: 222 47% 11%;
+    --radius: 0.5rem;
+    --sidebar-background: 222 47% 11%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 38 92% 50%;
+    --sidebar-primary-foreground: 222 47% 11%;
+    --sidebar-accent: 222 37% 18%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 222 37% 18%;
+    --sidebar-ring: 38 92% 50%;
+  }
+
+  .dark {
+    --background: 222 47% 6%;
+    --foreground: 0 0% 95%;
+    --card: 222 47% 8%;
+    --card-foreground: 0 0% 95%;
+    --popover: 222 47% 8%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 38 92% 50%;
+    --primary-foreground: 222 47% 11%;
+    --secondary: 222 37% 16%;
+    --secondary-foreground: 0 0% 95%;
+    --muted: 222 37% 12%;
+    --muted-foreground: 215 16% 60%;
+    --accent: 38 92% 50%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 142 50% 42%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 222 47% 11%;
+    --border: 222 37% 16%;
+    --input: 222 37% 16%;
+    --ring: 38 92% 50%;
+    --sidebar-background: 222 47% 4%;
+    --sidebar-foreground: 0 0% 90%;
+    --sidebar-primary: 38 92% 50%;
+    --sidebar-primary-foreground: 222 47% 11%;
+    --sidebar-accent: 222 37% 12%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 222 37% 12%;
+    --sidebar-ring: 38 92% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', sans-serif;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-background/80 backdrop-blur-xl border border-amber-500/10;
+  }
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-amber-500 via-amber-400 to-amber-600;
+  }
+  .amber-border {
+    @apply border border-amber-500/30;
+  }
+  .amber-shadow {
+    @apply shadow-[0_0_15px_rgba(245,158,11,0.15)];
+  }
+  .heading-xl {
+    @apply text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight;
+  }
+  .heading-lg {
+    @apply text-3xl sm:text-4xl font-bold tracking-tight;
+  }
+  .heading-md {
+    @apply text-2xl font-semibold tracking-tight;
+  }
+  .animate-in {
+    animation: fadeInUp 0.6s ease-out forwards;
+  }
+  .premium-card {
+    @apply bg-white rounded-xl border border-amber-500/20 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-amber-500/10 hover:border-amber-500/40;
+  }
+  .premium-stat {
+    @apply bg-white rounded-xl border border-amber-500/10 shadow-sm transition-all duration-200 hover:border-amber-500/30 hover:shadow-md;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(245, 158, 11, 0.3); }
+  50% { box-shadow: 0 0 40px rgba(245, 158, 11, 0.6); }
+}
+
+.animate-marquee {
+  animation: marquee 40s linear infinite;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
