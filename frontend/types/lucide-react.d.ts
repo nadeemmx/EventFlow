@@ -1,0 +1,181 @@
+declare module "lucide-react" {
+  import type { FC, SVGAttributes } from "react"
+
+  export interface IconProps extends SVGAttributes<SVGElement> {
+    size?: string | number
+    absoluteStrokeWidth?: boolean
+  }
+
+  export type Icon = FC<IconProps>
+  export type LucideIcon = FC<IconProps>
+
+  export const X: Icon
+  export const Check: Icon
+  export const ChevronRight: Icon
+  export const ChevronDown: Icon
+  export const ChevronUp: Icon
+  export const ChevronsUpDown: Icon
+  export const ChevronLeft: Icon
+  export const Circle: Icon
+  export const Search: Icon
+  export const Menu: Icon
+  export const Bell: Icon
+  export const Moon: Icon
+  export const Sun: Icon
+  export const Inbox: Icon
+  export const AlertTriangle: Icon
+  export const Loader2: Icon
+  export const LayoutDashboard: Icon
+  export const CalendarCheck: Icon
+  export const Users: Icon
+  export const Target: Icon
+  export const Building2: Icon
+  export const CreditCard: Icon
+  export const FileText: Icon
+  export const BarChart3: Icon
+  export const Settings: Icon
+  export const LogOut: Icon
+  export const MoreHorizontal: Icon
+  export const ArrowLeft: Icon
+  export const ArrowRight: Icon
+  export const ArrowUpDown: Icon
+  export const Calendar: Icon
+  export const CalendarDays: Icon
+  export const Clock: Icon
+  export const Download: Icon
+  export const Edit: Icon
+  export const Eye: Icon
+  export const EyeOff: Icon
+  export const IndianRupee: Icon
+  export const KeyRound: Icon
+  export const LogIn: Icon
+  export const Mail: Icon
+  export const MapPin: Icon
+  export const MessageSquare: Icon
+  export const Pencil: Icon
+  export const Phone: Icon
+  export const Plus: Icon
+  export const Save: Icon
+  export const Send: Icon
+  export const Trash: Icon
+  export const Trash2: Icon
+  export const User: Icon
+  export const UserPlus: Icon
+  export const XCircle: Icon
+  export const CheckCircle: Icon
+  export const CheckCircle2: Icon
+  export const DollarSign: Icon
+  export const Copy: Icon
+  export const ExternalLink: Icon
+  export const Filter: Icon
+  export const RefreshCw: Icon
+  export const AlertCircle: Icon
+  export const Info: Icon
+  export const HelpCircle: Icon
+  export const Home: Icon
+  export const Image: Icon
+  export const Upload: Icon
+  export const Loader: Icon
+  export const List: Icon
+  export const Grid: Icon
+  export const SlidersHorizontal: Icon
+  export const SortAsc: Icon
+  export const SortDesc: Icon
+  export const GripVertical: Icon
+  export const Maximize2: Icon
+  export const Minimize2: Icon
+  export const Share2: Icon
+  export const Printer: Icon
+  export const BookOpen: Icon
+  export const Briefcase: Icon
+  export const Package: Icon
+  export const TrendingUp: Icon
+  export const TrendingDown: Icon
+  export const BadgeCheck: Icon
+  export const BadgeAlert: Icon
+  export const BadgeInfo: Icon
+  export const BadgeX: Icon
+  export const BadgePlus: Icon
+  export const BadgeMinus: Icon
+  export const Tags: Icon
+  export const Tag: Icon
+  export const Receipt: Icon
+  export const ShoppingCart: Icon
+  export const Wallet: Icon
+  export const Banknote: Icon
+  export const PiggyBank: Icon
+  export const HandCoins: Icon
+  export const Percent: Icon
+  export const Star: Icon
+  export const Rocket: Icon
+  export const Zap: Icon
+  export const Shield: Icon
+  export const ShieldCheck: Icon
+  export const ShieldAlert: Icon
+  export const ShieldOff: Icon
+  export const LockKeyhole: Icon
+  export const UnlockKeyhole: Icon
+  export const Play: Icon
+  export const PlayCircle: Icon
+  export const Quote: Icon
+  export const FileSignature: Icon
+  export const PartyPopper: Icon
+  export const Sparkles: Icon
+  export const Heart: Icon
+  export const Github: Icon
+  export const Twitter: Icon
+  export const Linkedin: Icon
+  export const ArrowUpFromLine: Icon
+  export const ArrowLeftRight: Icon
+  export const Ban: Icon
+  export const ArrowDownFromLine: Icon
+  export const ImageIcon: Icon
+  export const Cake: Icon
+  export const Church: Icon
+  export const Presentation: Icon
+  export const Palette: Icon
+  export const ScrollText: Icon
+  export const Monitor: Icon
+  export const Smartphone: Icon
+  export const Video: Icon
+  export const Verified: Icon
+  export const Handshake: Icon
+  export const Building: Icon
+  export const Warehouse: Icon
+  export const UserCog: Icon
+  export const ArrowUp: Icon
+  export const ArrowDown: Icon
+  export const Globe: Icon
+  export const Aperture: Icon
+  export const Layers: Icon
+  export const CheckCheck: Icon
+  export const Gift: Icon
+  export const CheckSquare: Icon
+  export const Webhook: Icon
+  export const Terminal: Icon
+  export const LifeBuoy: Icon
+  export const Puzzle: Icon
+  export const Lightbulb: Icon
+  export const ShoppingBag: Icon
+  export const PanelRightOpen: Icon
+  export const ArrowUpRight: Icon
+  export const Cable: Icon
+  export const ConciergeBell: Icon
+  export const FolderKanban: Icon
+  export const BellDot: Icon
+  export const ClipboardList: Icon
+  export const Timer: Icon
+  export const Wrench: Icon
+  export const HardHat: Icon
+  export const Truck: Icon
+  export const Blocks: Icon
+  export const Repeat: Icon
+  export const ScanLine: Icon
+  export const Cookie: Icon
+}
+
+declare module "lucide-react/dist/esm/icons" {
+  import type { FC, SVGAttributes } from "react"
+  const icon: FC<SVGAttributes<SVGElement>>
+  export default icon
+}
