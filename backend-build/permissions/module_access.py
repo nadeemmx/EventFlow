@@ -1,0 +1,222 @@
+from rest_framework.permissions import BasePermission
+from core.choices import UserRole
+
+
+MODULE_PERMISSIONS = {
+    "venues": {
+        "create": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+        "list": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF],
+        "retrieve": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF],
+        "update": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+        "destroy": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "images": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+    },
+    "customers": {
+        "list": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.ACCOUNTANT],
+        "retrieve": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.ACCOUNTANT],
+        "create": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+        "update": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+        "destroy": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "merge": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+    },
+    "bookings": {
+        "create": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+        "list": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.ACCOUNTANT, UserRole.STAFF],
+        "retrieve": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.ACCOUNTANT, UserRole.STAFF],
+        "update": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+        "partial_update": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+        "destroy": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "cancel": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+        "confirm": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+        "mark_in_progress": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF],
+        "mark_completed": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF],
+        "timeline": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF],
+        "calendar": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF],
+        "outstanding": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.ACCOUNTANT],
+    },
+    "payments": {
+        "create": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT],
+        "list": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT, UserRole.MANAGER],
+        "retrieve": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT, UserRole.MANAGER],
+        "update": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT],
+        "refund": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT],
+        "receipt": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT, UserRole.MANAGER],
+        "receipt_pdf": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT, UserRole.MANAGER],
+        "outstanding": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.ACCOUNTANT],
+        "summary": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.ACCOUNTANT],
+    },
+    "invoices": {
+        "create": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.ACCOUNTANT],
+        "generate": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT],
+        "list": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT, UserRole.MANAGER],
+        "retrieve": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT, UserRole.MANAGER],
+        "update": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT],
+        "pdf": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT, UserRole.MANAGER],
+        "download": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT, UserRole.MANAGER],
+        "email": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT],
+    },
+    "leads": {
+        "create": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+        "list": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.ACCOUNTANT],
+        "retrieve": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.ACCOUNTANT],
+        "update": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+        "destroy": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "convert": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+        "followups": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF],
+        "add_followup": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF],
+    },
+    "quotations": {
+        "create": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+        "list": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+        "retrieve": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+        "update": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+        "destroy": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "send": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+        "accept": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+        "reject": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+    },
+    "contracts": {
+        "create": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+        "list": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+        "retrieve": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+        "update": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+        "destroy": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "generate": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+        "pdf": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+        "sign": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+        "cancel": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+    },
+    "vendors": {
+        "create": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+        "list": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF],
+        "retrieve": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF],
+        "update": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+        "destroy": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "assign": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+    },
+    "inventory": {
+        "create": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "list": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF],
+        "retrieve": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF],
+        "update": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+        "destroy": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "allocate": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+        "release": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+    },
+    "staff": {
+        "create": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "list": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+        "retrieve": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+        "update": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "destroy": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+    },
+    "tasks": {
+        "create": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+        "list": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF],
+        "retrieve": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF],
+        "update": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF],
+        "destroy": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "status": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF],
+    },
+    "expenses": {
+        "create": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT],
+        "list": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.ACCOUNTANT],
+        "retrieve": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.ACCOUNTANT],
+        "update": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT],
+        "destroy": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+    },
+    "packages": {
+        "create": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+        "list": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF],
+        "retrieve": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF],
+        "update": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+        "destroy": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+    },
+    "users": {
+        "create": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "list": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+        "retrieve": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+        "update": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "destroy": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "activate": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "deactivate": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+    },
+    "notifications": {
+        "list": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF],
+        "retrieve": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF],
+        "mark_read": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF],
+    },
+    "audit_logs": {
+        "list": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "retrieve": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+    },
+    "reports": {
+        "financial": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT],
+        "operational": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+        "subscription": [UserRole.SUPER_ADMIN],
+        "revenue": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.ACCOUNTANT],
+        "bookings": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF],
+        "payments": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.ACCOUNTANT],
+        "occupancy": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF],
+        "leads": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+        "vendors": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+        "inventory": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
+        "outstanding": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.ACCOUNTANT],
+        "monthly_growth": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.ACCOUNTANT],
+        "export": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+    },
+    "settings": {
+        "read": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "update": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "payment_gateway": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "whatsapp": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "email": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "invoice": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "booking": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "notifications": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "security": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "branding": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "organization": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "profile": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF, UserRole.ACCOUNTANT],
+        "users": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "update_user": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "delete_user": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "activate_user": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "deactivate_user": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "roles": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "subscription": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+    },
+    "dashboard": {
+        "get": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.ACCOUNTANT, UserRole.STAFF],
+        "summary": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.ACCOUNTANT, UserRole.STAFF],
+    },
+    "subscriptions": {
+        "plans": [UserRole.SUPER_ADMIN],
+        "current": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "history": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "renew": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+    },
+    "tenants": {
+        "create": [UserRole.SUPER_ADMIN],
+        "list": [UserRole.SUPER_ADMIN],
+        "retrieve": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "update": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "partial_update": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "settings": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+    },
+}
+
+
+class ModuleAccessPermission(BasePermission):
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        if request.user.role == UserRole.SUPER_ADMIN:
+            return True
+        module = getattr(view, "module_name", "")
+        action = getattr(view, "action", request.method.lower())
+        if action == "partial_update":
+            action = "update"
+        module_perms = MODULE_PERMISSIONS.get(module, {})
+        allowed = module_perms.get(action, [])
+        return request.user.role in allowed

@@ -1,0 +1,113 @@
+from rest_framework.views import APIView
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.throttling import ScopedRateThrottle
+from apps.authentication.serializers import (
+    LoginSerializer, RefreshSerializer, ForgotPasswordSerializer,
+    ResetPasswordSerializer, ChangePasswordSerializer, ProfileSerializer,
+)
+from services.auth_service import AuthService
+from core.responses import ok, error
+from core.exceptions import ValidationException
+
+
+class LoginView(APIView):
+    permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "login"
+
+    def post(self, request):
+        serializer = LoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            result = AuthService().login(
+                serializer.validated_data["email"],
+                serializer.validated_data["password"],
+                request,
+            )
+            return ok(result, "Login successful")
+        except ValidationException as e:
+            return error(e.message, status=401)
+
+
+class RefreshView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = RefreshSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            result = AuthService().refresh(serializer.validated_data["refresh_token"])
+            return ok(result)
+        except ValidationException as e:
+            return error(e.message, status=401)
+
+
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = RefreshSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        AuthService().logout(request.user, serializer.validated_data["refresh_token"])
+        return ok(None, "Logged out successfully")
+
+
+class ForgotPasswordView(APIView):
+    permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "login"
+
+    def post(self, request):
+        serializer = ForgotPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        AuthService().forgot_password(serializer.validated_data["email"])
+        return ok(None, "Password reset link sent")
+
+
+class ResetPasswordView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = ResetPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            AuthService().reset_password(
+                serializer.validated_data["token"],
+                serializer.validated_data["password"],
+            )
+            return ok(None, "Password reset successful")
+        except ValidationException as e:
+            return error(e.message)
+
+
+class ChangePasswordView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            AuthService().change_password(
+                request.user,
+                serializer.validated_data["current_password"],
+                serializer.validated_data["new_password"],
+            )
+            return ok(None, "Password changed successfully")
+        except ValidationException as e:
+            return error(e.message)
+
+
+class ProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        serializer = ProfileSerializer(request.user)
+        return ok(serializer.data)
+
+    def put(self, request):
+        serializer = ProfileSerializer(request.user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        for field, value in serializer.validated_data.items():
+            setattr(request.user, field, value)
+        request.user.save()
+        return ok(serializer.data, "Profile updated")
