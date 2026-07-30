@@ -1,0 +1,31 @@
+# EventFlow - API subdomain .htaccess
+# Place this in public_html/api/ for api.yourdomain.com
+
+# Passenger WSGI Configuration
+PassengerEnabled On
+PassengerAppRoot /home/eventflow/python/eventflow-api
+PassengerPython /home/eventflow/python/eventflow-api/venv/bin/python
+PassengerAppType wsgi
+PassengerStartupFile passenger_wsgi.py
+
+# Enable Rewrite Engine
+RewriteEngine On
+
+# Pass all requests to Django WSGI
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ /api/$1 [QSA,L]
+
+# Security Headers
+Header always set X-Content-Type-Options "nosniff"
+Header always set X-Frame-Options "DENY"
+Header always set X-XSS-Protection "1; mode=block"
+
+# CORS Headers
+Header always set Access-Control-Allow-Origin "https://app.eventflow.com"
+Header always set Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+Header always set Access-Control-Allow-Headers "Content-Type, Authorization"
+Header always set Access-Control-Allow-Credentials "true"
+
+# File upload size limit
+LimitRequestBody 10485760

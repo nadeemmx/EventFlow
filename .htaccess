@@ -1,0 +1,16 @@
+# EventFlow - Root .htaccess
+# Place this in public_html/ for the main domain
+
+# Redirect API requests to the Passenger WSGI app
+RewriteEngine On
+
+# Serve media files directly
+RewriteCond %{REQUEST_URI} ^/media/(.*)$
+RewriteRule ^media/(.*)$ /media/$1 [L]
+
+# Serve static files directly
+RewriteCond %{REQUEST_URI} ^/static/(.*)$
+RewriteRule ^static/(.*)$ /static/$1 [L]
+
+# Everything else serves the Next.js static export
+FallbackResource /index.html

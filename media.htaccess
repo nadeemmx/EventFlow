@@ -1,0 +1,23 @@
+# EventFlow Media - .htaccess for public_html/media/
+# Place this in the media directory
+
+Options -Indexes
+
+# Allow direct access to media files
+<IfModule mod_rewrite.c>
+    RewriteEngine Off
+</IfModule>
+
+# File upload size limit
+LimitRequestBody 10485760
+
+# Only allow specific file types
+<FilesMatch "\.(jpg|jpeg|png|gif|pdf|doc|docx)$">
+    Order Allow,Deny
+    Allow from all
+</FilesMatch>
+
+# Block access to PHP files in media directory
+<FilesMatch "\.php$">
+    Deny from all
+</FilesMatch>
