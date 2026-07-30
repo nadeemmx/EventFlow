@@ -23,6 +23,7 @@ staticfiles/
 node_modules/
 .next/
 out/
+*.tsbuildinfo
 
 # Media uploads
 media/
