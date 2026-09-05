@@ -1,5 +1,6 @@
 from django.db import models
 from core.base_models import TenantBaseModel
+from core.validators import validate_pdf_file
 
 
 class Invoice(TenantBaseModel):
@@ -11,7 +12,7 @@ class Invoice(TenantBaseModel):
     subtotal = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     tax_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    pdf_file = models.FileField(upload_to="invoices/pdf/", blank=True)
+    pdf_file = models.FileField(upload_to="invoices/pdf/", blank=True, validators=[validate_pdf_file])
 
     class Meta:
         db_table = "invoices"

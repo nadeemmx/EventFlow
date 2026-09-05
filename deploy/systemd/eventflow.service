@@ -1,0 +1,39 @@
+[Unit]
+Description=EventFlow Django API
+Requires=network.target redis.service mysql.service
+After=network.target redis.service mysql.service
+
+[Service]
+Type=notify
+NotifyAccess=all
+User=eventflow
+Group=eventflow
+WorkingDirectory=/home/eventflow/python/eventflow-api
+ExecStart=/home/eventflow/python/eventflow-api/venv/bin/gunicorn config.wsgi:application -c gunicorn.conf.py
+ExecReload=/bin/kill -s HUP $MAINPID
+ExecStop=/bin/kill -s TERM $MAINPID
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=60
+TimeoutStopSec=30
+TimeoutReloadSec=30
+
+# Environment
+EnvironmentFile=/home/eventflow/python/eventflow-api/.env
+
+# Security hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/eventflow/media /home/eventflow/python/eventflow-api/staticfiles /home/eventflow/python/eventflow-api/logs
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+
+# Resource limits
+LimitNOFILE=65535
+LimitNPROC=4096
+
+[Install]
+WantedBy=multi-user.target

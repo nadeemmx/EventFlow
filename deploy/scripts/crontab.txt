@@ -1,0 +1,29 @@
+# EventFlow Cron Jobs
+# Install with: crontab -e -u eventflow
+# Then paste the contents below
+
+# Environment
+SHELL=/bin/bash
+PATH=/home/eventflow/python/eventflow-api/venv/bin:/usr/local/bin:/usr/bin:/bin
+
+# EventFlow cron jobs (run as eventflow user)
+# Send event reminders (daily at 8am)
+0 8 * * * cd /home/eventflow/python/eventflow-api && ./venv/bin/python manage.py send_event_reminders >> logs/cron.log 2>&1
+
+# Expire tentative bookings (daily at midnight)
+0 0 * * * cd /home/eventflow/python/eventflow-api && ./venv/bin/python manage.py expire_tentative_bookings >> logs/cron.log 2>&1
+
+# Update overdue payments (daily at 1am)
+0 1 * * * cd /home/eventflow/python/eventflow-api && ./venv/bin/python manage.py update_overdue_payments >> logs/cron.log 2>&1
+
+# Generate scheduled reports (daily at 6am)
+0 6 * * * cd /home/eventflow/python/eventflow-api && ./venv/bin/python manage.py generate_scheduled_reports >> logs/cron.log 2>&1
+
+# Cleanup old logs (weekly, Sunday at 3am)
+0 3 * * 0 cd /home/eventflow/python/eventflow-api && ./venv/bin/python manage.py cleanup_old_logs >> logs/cron.log 2>&1
+
+# Send subscription reminders (weekly, Monday at 9am)
+0 9 * * 1 cd /home/eventflow/python/eventflow-api && ./venv/bin/python manage.py send_subscription_reminders >> logs/cron.log 2>&1
+
+# Database backup (daily at 2am)
+0 2 * * * /home/eventflow/scripts/backup.sh >> /home/eventflow/python/eventflow-api/logs/backup.log 2>&1

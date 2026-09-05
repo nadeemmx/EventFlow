@@ -1,5 +1,6 @@
 from django.db import models
 from core.base_models import TenantBaseModel
+from core.validators import validate_pdf_file
 
 class Contract(TenantBaseModel):
     CONTRACT_STATUS = [
@@ -13,7 +14,7 @@ class Contract(TenantBaseModel):
     contract_number = models.CharField(max_length=50, unique=True, db_index=True)
     content = models.TextField(blank=True)
     status = models.CharField(max_length=30, choices=CONTRACT_STATUS, default="DRAFT", db_index=True)
-    pdf_file = models.FileField(upload_to="contracts/pdf/", blank=True)
+    pdf_file = models.FileField(upload_to="contracts/pdf/", blank=True, validators=[validate_pdf_file])
     valid_from = models.DateField(null=True, blank=True)
     valid_until = models.DateField(null=True, blank=True)
     signed_date = models.DateTimeField(null=True, blank=True)

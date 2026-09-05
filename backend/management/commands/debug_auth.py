@@ -49,12 +49,12 @@ class Command(BaseCommand):
             self.stdout.write(self.style.ERROR(f"  This means the password was NOT hashed by Django's set_password()."))
 
         # 5. Direct check_password
-        self.stdout.write(f"\n--- check_password('{password}') ---")
+        self.stdout.write(f"\n--- check_password() ---")
         result = user.check_password(password)
         self.stdout.write(f"  Result: {result}")
 
         # 6. Full authenticate() call
-        self.stdout.write(f"\n--- authenticate(email='{email}', password='{password}') ---")
+        self.stdout.write(f"\n--- authenticate(email='{email}') ---")
         auth_result = authenticate(email=email, password=password)
         if auth_result:
             self.stdout.write(self.style.SUCCESS(f"  SUCCESS: authenticated as {auth_result.email}"))

@@ -114,14 +114,23 @@ class SettingsService(BaseService):
 
     def _update_settings(self, model, repo, serializer, audit_action):
         instance = self._get_or_create(model, repo)
-        old_data = str({f: getattr(instance, f) for f in serializer.validated_data})
+        # Redact sensitive encrypted fields before logging
+        sensitive_fields = {"api_key", "api_secret", "webhook_secret", "smtp_password", "phone_number_id", "business_account_id", "webhook_verify_token"}
+        old_data = str({
+            f: "***REDACTED***" if f in sensitive_fields else getattr(instance, f)
+            for f in serializer.validated_data
+        })
         instance = repo.update(instance, **serializer.validated_data)
+        new_data = str({
+            f: "***REDACTED***" if f in sensitive_fields else v
+            for f, v in serializer.validated_data.items()
+        })
         self.audit_repo.log(
             tenant=self.tenant, user=self.user,
             module="SETTINGS", action=audit_action,
             record_id=instance.id,
             old_data=old_data,
-            new_data=str(serializer.validated_data),
+            new_data=new_data,
         )
         return instance
 

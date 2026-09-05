@@ -51,7 +51,7 @@ class RazorpayGateway(PaymentGatewayProvider):
             f"{order_id}|{payment_id}".encode(),
             hashlib.sha256,
         ).hexdigest()
-        if expected == signature:
+        if hmac.compare_digest(expected, signature):
             return {"success": True, "verified": True}
         logger.warning("Razorpay signature mismatch for order %s, payment %s", order_id, payment_id)
         return {"success": False, "verified": False}

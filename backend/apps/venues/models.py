@@ -1,6 +1,7 @@
 from django.db import models
 from core.base_models import TenantBaseModel
 from core.choices import VenueType, VenueStatus
+from core.validators import validate_image_file
 
 
 class Venue(TenantBaseModel):
@@ -37,7 +38,7 @@ class Venue(TenantBaseModel):
 
 class VenueImage(TenantBaseModel):
     venue = models.ForeignKey(Venue, on_delete=models.CASCADE, related_name="images", db_index=True)
-    image = models.ImageField(upload_to="venues/")
+    image = models.ImageField(upload_to="venues/", validators=[validate_image_file])
     display_order = models.IntegerField(default=0)
 
     class Meta:

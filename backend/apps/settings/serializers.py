@@ -1,4 +1,5 @@
 from rest_framework import serializers
+import re
 from apps.settings.models import (
     PaymentGatewaySettings, WhatsAppSettings, EmailSettings,
     InvoiceSettings, BookingSettings, NotificationSettings,
@@ -127,6 +128,33 @@ class BrandingSettingsSerializer(serializers.ModelSerializer):
             "created_at", "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
+
+    def validate_custom_css(self, value):
+        if not value:
+            return value
+        # Strip dangerous CSS patterns
+        dangerous_patterns = [
+            r"expression\s*\(",          # CSS expression()
+            r"url\s*\(\s*['\"]?\s*javascript:",  # url(javascript:)
+            r"@import\s",                # @import (external CSS loading)
+            r"<script",                  # Embedded script tags
+            r"on\w+\s*=",               # Inline event handlers
+        ]
+        for pattern in dangerous_patterns:
+            if re.search(pattern, value, re.IGNORECASE):
+                raise serializers.ValidationError(
+                    "CSS contains potentially dangerous patterns."
+                )
+        return value
+
+    def validate_custom_js(self, value):
+        if not value:
+            return value
+        # Strip script tags but allow JS code content
+        cleaned = re.sub(r"<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>", "", value, flags=re.IGNORECASE)
+        # Remove event handler attributes
+        cleaned = re.sub(r'\bon\w+\s*=', '', cleaned, flags=re.IGNORECASE)
+        return cleaned
 
 
 class OrganizationSettingsSerializer(serializers.ModelSerializer):

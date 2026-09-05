@@ -11,13 +11,13 @@ Options -Indexes
 # File upload size limit
 LimitRequestBody 10485760
 
-# Only allow specific file types
-<FilesMatch "\.(jpg|jpeg|png|gif|pdf|doc|docx)$">
+# Only allow specific file types (case-insensitive)
+<FilesMatch "(?i)\.(jpg|jpeg|png|gif|webp|pdf)$">
     Order Allow,Deny
     Allow from all
 </FilesMatch>
 
-# Block access to PHP files in media directory
-<FilesMatch "\.php$">
+# Block all potentially dangerous file types
+<FilesMatch "(?i)\.(php|php[0-9s]*|phtml|pht|phps|cgi|pl|py|asp|aspx|jsp|sh|bash|exe|bat|cmd|com|msi|scr|vbs|vbe|js|wsf|wsc|wsh|ps1|psm1|reg|dll|bat|cmd|com|msp|hta|cpl|lnk|inf|reg|rgs|sct|shb|shs|wor|ws)$">
     Deny from all
 </FilesMatch>

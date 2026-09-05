@@ -31,6 +31,8 @@ class LoginView(APIView):
 
 class RefreshView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "token_refresh"
 
     def post(self, request):
         serializer = RefreshSerializer(data=request.data)
@@ -55,7 +57,7 @@ class LogoutView(APIView):
 class ForgotPasswordView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [ScopedRateThrottle]
-    throttle_scope = "login"
+    throttle_scope = "forgot_password"
 
     def post(self, request):
         serializer = ForgotPasswordSerializer(data=request.data)
@@ -66,6 +68,8 @@ class ForgotPasswordView(APIView):
 
 class ResetPasswordView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "password_reset"
 
     def post(self, request):
         serializer = ResetPasswordSerializer(data=request.data)
@@ -82,6 +86,8 @@ class ResetPasswordView(APIView):
 
 class ChangePasswordView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "password_change"
 
     def post(self, request):
         serializer = ChangePasswordSerializer(data=request.data)

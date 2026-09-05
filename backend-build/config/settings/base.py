@@ -122,6 +122,8 @@ else:
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
+
 AUTH_USER_MODEL = "users.User"
 
 AUTHENTICATION_BACKENDS = [
@@ -155,15 +157,35 @@ REST_FRAMEWORK = {
         "anon": "100/hour",
         "user": "1000/hour",
         "login": "5/minute",
+        "forgot_password": "3/minute",
+        "password_reset": "5/minute",
+        "token_refresh": "30/minute",
+        "password_change": "10/minute",
     },
 }
 
-CACHES = {
-    "default": {
-        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-        "KEY_PREFIX": "eventflow",
+REDIS_URL = config("REDIS_URL", default="")
+
+if REDIS_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": REDIS_URL,
+            "KEY_PREFIX": "eventflow",
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+                "SERIALIZER": "django_redis.serializers.json.JSONSerializer",
+            },
+            "TIMEOUT": 300,
+        }
     }
-}
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "KEY_PREFIX": "eventflow",
+        }
+    }
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(

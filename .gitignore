@@ -18,12 +18,16 @@ htmlcov/
 dist/
 build/
 staticfiles/
+logs/
 
 # Node
 node_modules/
 .next/
 out/
 *.tsbuildinfo
+
+# Build artifacts
+frontend-build/
 
 # Media uploads
 media/

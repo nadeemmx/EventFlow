@@ -1,4 +1,5 @@
 import re
+import magic
 from django.core.exceptions import ValidationError
 
 
@@ -21,3 +22,63 @@ def validate_password_strength(value):
         raise ValidationError("Password must contain at least one lowercase letter.")
     if not re.search(r"[0-9]", value):
         raise ValidationError("Password must contain at least one number.")
+    if not re.search(r"[!@#$%^&*(),.?\":{}|<>\-_=+\[\]\\;'/`~]", value):
+        raise ValidationError("Password must contain at least one special character.")
+
+
+ALLOWED_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "gif"}
+ALLOWED_IMAGE_MIMES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+MAX_IMAGE_SIZE_MB = 10
+
+ALLOWED_PDF_EXTENSIONS = {"pdf"}
+ALLOWED_PDF_MIMES = {"application/pdf"}
+MAX_PDF_SIZE_MB = 20
+
+
+def _validate_file(file, allowed_extensions, allowed_mimes, max_size_mb, label):
+    if not file:
+        return
+
+    ext = ""
+    if hasattr(file, "name") and file.name:
+        ext = file.name.rsplit(".", 1)[-1].lower() if "." in file.name else ""
+
+    if ext not in allowed_extensions:
+        raise ValidationError(
+            f"Invalid file type '.{ext}' for {label}. "
+            f"Allowed: {', '.join(sorted(allowed_extensions))}"
+        )
+
+    file.seek(0)
+    chunk = file.read(2048)
+    file.seek(0)
+
+    try:
+        detected_mime = magic.from_buffer(chunk, mime=True)
+    except Exception:
+        detected_mime = None
+
+    if detected_mime and detected_mime not in allowed_mimes:
+        raise ValidationError(
+            f"File content does not match expected type for {label}. "
+            f"Detected: {detected_mime}"
+        )
+
+    file.seek(0, 2)
+    size_bytes = file.tell()
+    file.seek(0)
+
+    max_bytes = max_size_mb * 1024 * 1024
+    if size_bytes > max_bytes:
+        raise ValidationError(
+            f"File too large ({size_bytes // (1024 * 1024)}MB). "
+            f"Maximum allowed: {max_size_mb}MB."
+        )
+
+
+def validate_image_file(file):
+    _validate_file(file, ALLOWED_IMAGE_EXTENSIONS, ALLOWED_IMAGE_MIMES, MAX_IMAGE_SIZE_MB, "image")
+
+
+def validate_pdf_file(file):
+    _validate_file(file, ALLOWED_PDF_EXTENSIONS, ALLOWED_PDF_MIMES, MAX_PDF_SIZE_MB, "PDF")

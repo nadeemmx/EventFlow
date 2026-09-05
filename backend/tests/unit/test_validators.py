@@ -19,8 +19,12 @@ class TestValidators:
             validate_gst("invalid")
 
     def test_strong_password(self):
-        validate_password_strength("Password123")
+        validate_password_strength("Password123!")
 
     def test_weak_password(self):
         with pytest.raises(ValidationError):
             validate_password_strength("weak")
+
+    def test_password_missing_special_char(self):
+        with pytest.raises(ValidationError, match="special character"):
+            validate_password_strength("Password123")

@@ -24,14 +24,15 @@ def readiness_check(request):
     checks = {
         "database": False,
         "migrations": False,
+        "redis": False,
     }
-    
+
     try:
         connection.ensure_connection()
         checks["database"] = True
     except Exception:
         pass
-    
+
     try:
         from django.db.migrations.executor import MigrationExecutor
         executor = MigrationExecutor(connection)
@@ -39,10 +40,18 @@ def readiness_check(request):
         checks["migrations"] = len(plan) == 0
     except Exception:
         pass
-    
+
+    try:
+        from django.core.cache import cache
+        cache.set("_health_check_ping", "pong", 10)
+        if cache.get("_health_check_ping") == "pong":
+            checks["redis"] = True
+    except Exception:
+        pass
+
     all_ok = all(checks.values())
     status_code = 200 if all_ok else 503
-    
+
     return JsonResponse(
         {"status": "ok" if all_ok else "degraded", "checks": checks},
         status=status_code,

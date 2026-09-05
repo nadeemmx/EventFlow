@@ -2,6 +2,7 @@ from django.db import models
 from core.base_models import TenantBaseModel
 from core.choices import PaymentGateway
 from core.fields import EncryptedTextField
+from core.validators import validate_image_file, validate_pdf_file
 
 
 class PaymentGatewaySettings(TenantBaseModel):
@@ -68,7 +69,7 @@ class EmailSettings(TenantBaseModel):
 class InvoiceSettings(TenantBaseModel):
     prefix = models.CharField(max_length=50, default="INV")
     next_number = models.IntegerField(default=1)
-    logo = models.ImageField(upload_to="invoices/logos/", blank=True)
+    logo = models.ImageField(upload_to="invoices/logos/", blank=True, validators=[validate_image_file])
     footer_text = models.TextField(blank=True)
     payment_terms = models.CharField(max_length=500, blank=True)
     gst_enabled = models.BooleanField(default=True)
@@ -157,8 +158,8 @@ class BrandingSettings(TenantBaseModel):
     primary_color = models.CharField(max_length=7, default="#0F172A")
     secondary_color = models.CharField(max_length=7, default="#F59E0B")
     accent_color = models.CharField(max_length=7, default="#10B981")
-    logo = models.ImageField(upload_to="branding/logos/", blank=True)
-    favicon = models.ImageField(upload_to="branding/favicons/", blank=True)
+    logo = models.ImageField(upload_to="branding/logos/", blank=True, validators=[validate_image_file])
+    favicon = models.ImageField(upload_to="branding/favicons/", blank=True, validators=[validate_image_file])
     custom_domain = models.CharField(max_length=255, blank=True)
     custom_css = models.TextField(blank=True)
     custom_js = models.TextField(blank=True)
