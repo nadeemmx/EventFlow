@@ -46,6 +46,11 @@ if [ ! -f "${BACKEND_DIR}/.env" ]; then
     fail ".env not found at ${BACKEND_DIR}/.env — cannot deploy without it"
 fi
 
+# Verify sudo access is available (needed for systemctl/nginx)
+if ! sudo -n true 2>/dev/null; then
+    fail "Sudo access not configured for ${DEPLOY_USER}. Grant NOPASSWD for: systemctl (eventflow.service, nginx), nginx -t"
+fi
+
 # Record current commit for rollback
 PREVIOUS_SHA=$(cd "${REPO_DIR}" && git rev-parse HEAD 2>/dev/null || echo "unknown")
 log "Previous commit: ${PREVIOUS_SHA}"
@@ -127,20 +132,20 @@ fi
 # 7. Backend — restart Gunicorn
 # ----------------------------------------------------------
 log "[7/10] Restarting Gunicorn..."
-if systemctl is-active --quiet eventflow.service; then
-    systemctl restart eventflow.service
+if sudo -n systemctl is-active --quiet eventflow.service; then
+    sudo -n systemctl restart eventflow.service
     sleep 2
-    if systemctl is-active --quiet eventflow.service; then
+    if sudo -n systemctl is-active --quiet eventflow.service; then
         log "  Gunicorn restarted successfully"
     else
         log "  WARNING: Gunicorn failed to start after restart"
-        journalctl -u eventflow.service --no-pager -n 20
+        sudo -n journalctl -u eventflow.service --no-pager -n 20 || true
         fail "Gunicorn is not running after restart"
     fi
 else
-    systemctl start eventflow.service
+    sudo -n systemctl start eventflow.service
     sleep 2
-    if systemctl is-active --quiet eventflow.service; then
+    if sudo -n systemctl is-active --quiet eventflow.service; then
         log "  Gunicorn started"
     else
         fail "Gunicorn failed to start"
@@ -151,8 +156,8 @@ fi
 # 8. Reload Nginx (safe — only reload, never recreate config)
 # ----------------------------------------------------------
 log "[8/10] Reloading Nginx..."
-if nginx -t 2>&1; then
-    systemctl reload nginx
+if sudo -n nginx -t 2>&1; then
+    sudo -n systemctl reload nginx
     log "  Nginx reloaded"
 else
     log "  WARNING: Nginx config test failed — skipping reload"
@@ -165,7 +170,7 @@ log "[9/10] Verifying services..."
 
 SERVICES_OK=true
 for svc in eventflow.service nginx; do
-    if systemctl is-active --quiet "$svc"; then
+    if sudo -n systemctl is-active --quiet "$svc"; then
         log "  [OK] ${svc}"
     else
         log "  [FAIL] ${svc}"
