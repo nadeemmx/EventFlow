@@ -4,10 +4,32 @@ from rest_framework.throttling import ScopedRateThrottle
 from apps.authentication.serializers import (
     LoginSerializer, RefreshSerializer, ForgotPasswordSerializer,
     ResetPasswordSerializer, ChangePasswordSerializer, ProfileSerializer,
+    RegisterSerializer,
 )
 from services.auth_service import AuthService
 from core.responses import ok, error
 from core.exceptions import ValidationException
+
+
+class RegisterView(APIView):
+    permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "login"
+
+    def post(self, request):
+        serializer = RegisterSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            result = AuthService().register(
+                full_name=serializer.validated_data["full_name"],
+                email=serializer.validated_data["email"],
+                password=serializer.validated_data["password"],
+                mobile=serializer.validated_data.get("mobile", ""),
+                business_name=serializer.validated_data.get("business_name", ""),
+            )
+            return ok(result, "Registration successful", status=201)
+        except ValidationException as e:
+            return error(e.message, status=400)
 
 
 class LoginView(APIView):

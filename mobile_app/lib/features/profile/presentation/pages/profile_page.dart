@@ -3,13 +3,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:eventflow_app/core/theme/app_colors.dart';
 import 'package:eventflow_app/core/theme/app_dimens.dart';
+import 'package:eventflow_app/core/theme/design_system.dart';
 import 'package:eventflow_app/core/utils/formatters.dart';
 import 'package:eventflow_app/core/services/image_picker_service.dart';
 import 'package:eventflow_app/core/widgets/login_required_sheet.dart';
-import 'package:eventflow_app/core/widgets/premium_avatar.dart';
-import 'package:eventflow_app/core/widgets/premium_card.dart';
-import 'package:eventflow_app/core/widgets/status_chip.dart';
-import 'package:eventflow_app/core/widgets/section_header.dart';
 import 'package:eventflow_app/features/authentication/presentation/bloc/auth_bloc.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -30,8 +27,9 @@ class _ProfilePageState extends State<ProfilePage> {
         title: const Text('Profile'),
         centerTitle: false,
         elevation: 0,
-        scrolledUnderElevation: 1,
+        scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
+        backgroundColor: AppColors.background,
       ),
       body: BlocBuilder<AuthBloc, AuthState>(
         builder: (context, state) {
@@ -47,10 +45,11 @@ class _ProfilePageState extends State<ProfilePage> {
             return ListView(
               padding: EdgeInsets.zero,
               children: [
+                // Profile header
                 Container(
                   width: double.infinity,
                   decoration: const BoxDecoration(
-                    gradient: AppColors.primaryGradient,
+                    gradient: DesignSystem.primaryGradient,
                     borderRadius: BorderRadius.only(
                       bottomLeft: Radius.circular(AppDimens.radiusXxl),
                       bottomRight: Radius.circular(AppDimens.radiusXxl),
@@ -67,9 +66,27 @@ class _ProfilePageState extends State<ProfilePage> {
                       Stack(
                         clipBehavior: Clip.none,
                         children: [
-                          GradientAvatar(
-                            initials: (user.fullName.isNotEmpty ? user.fullName[0] : 'U').toUpperCase(),
-                            radius: 52,
+                          Container(
+                            width: 104,
+                            height: 104,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.3),
+                                width: 3,
+                              ),
+                            ),
+                            child: Center(
+                              child: Text(
+                                (user.fullName.isNotEmpty ? user.fullName[0] : 'U').toUpperCase(),
+                                style: const TextStyle(
+                                  fontSize: 40,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
                           ),
                           Positioned(
                             bottom: 2,
@@ -106,17 +123,27 @@ class _ProfilePageState extends State<ProfilePage> {
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: AppDimens.sm),
-                      StatusChip(
-                        label: Formatters.statusLabel(user.role),
-                        color: Colors.white,
-                        backgroundColor: Colors.white.withValues(alpha: 0.2),
-                        small: true,
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          Formatters.statusLabel(user.role),
+                          style: const TextStyle(
+                            fontSize: AppDimens.fontSm,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: AppDimens.xl),
-                const SectionHeader(title: 'Personal Information'),
+                // Personal info
+                _buildSectionHeader('Personal Information'),
                 _buildInfoCard(
                   icon: Icons.email_outlined,
                   iconColor: AppColors.info,
@@ -131,18 +158,19 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 _buildInfoCard(
                   icon: Icons.badge_outlined,
-                  iconColor: AppColors.secondary,
+                  iconColor: AppColors.accent,
                   label: 'Role',
                   value: Formatters.statusLabel(user.role),
                 ),
                 if (user.tenantId != null)
                   _buildInfoCard(
                     icon: Icons.business_outlined,
-                    iconColor: AppColors.accent,
+                    iconColor: AppColors.secondary,
                     label: 'Tenant ID',
                     value: user.tenantId.toString(),
                   ),
                 const SizedBox(height: AppDimens.lg),
+                // Actions
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: AppDimens.lg),
                   child: SizedBox(
@@ -153,6 +181,8 @@ class _ProfilePageState extends State<ProfilePage> {
                       icon: const Icon(Icons.edit_outlined, size: 18),
                       label: const Text('Edit Profile'),
                       style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(AppDimens.radiusMd),
                         ),
@@ -171,6 +201,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       icon: const Icon(Icons.settings_outlined, size: 18),
                       label: const Text('Settings'),
                       style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: AppColors.border),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(AppDimens.radiusMd),
                         ),
@@ -231,53 +262,74 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppDimens.lg, vertical: AppDimens.sm),
+      child: Text(
+        title,
+        style: DesignSystem.titleSmall.copyWith(
+          color: AppColors.textTertiary,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.3,
+        ),
+      ),
+    );
+  }
+
   Widget _buildInfoCard({
     required IconData icon,
     required Color iconColor,
     required String label,
     required String value,
   }) {
-    return PremiumCard(
-      padding: const EdgeInsets.symmetric(horizontal: AppDimens.lg, vertical: AppDimens.md),
-      margin: const EdgeInsets.symmetric(horizontal: AppDimens.lg, vertical: AppDimens.xs),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: iconColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(AppDimens.radiusSm),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppDimens.lg, vertical: AppDimens.xs),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: AppDimens.lg, vertical: AppDimens.md),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppDimens.cardRadius),
+          border: Border.all(color: AppColors.borderLight),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(AppDimens.radiusSm),
+              ),
+              child: Icon(icon, color: iconColor, size: AppDimens.iconMd),
             ),
-            child: Icon(icon, color: iconColor, size: AppDimens.iconMd),
-          ),
-          const SizedBox(width: AppDimens.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: AppDimens.fontXs,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textTertiary,
-                    letterSpacing: 0.3,
+            const SizedBox(width: AppDimens.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: AppDimens.fontXs,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textTertiary,
+                      letterSpacing: 0.3,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: AppDimens.fontBase,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                  const SizedBox(height: 2),
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: AppDimens.fontBase,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -345,6 +397,10 @@ class _ProfilePageState extends State<ProfilePage> {
                     }),
                   );
             },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+            ),
             child: const Text('Save'),
           ),
         ],

@@ -27,7 +27,7 @@ void main() {
       });
 
       test('returns null for valid password', () {
-        expect(Validators.password('123456'), isNull);
+        expect(Validators.password('Passw0rd!'), isNull);
       });
     });
 

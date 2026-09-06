@@ -14,7 +14,9 @@ class TokenService {
   }
 
   Future<String?> getAccessToken() async {
-    return await _storage.read(key: _accessTokenKey);
+    final token = await _storage.read(key: _accessTokenKey);
+    if (token != null && token.isEmpty) return null;
+    return token;
   }
 
   Future<void> saveRefreshToken(String token) async {
@@ -22,7 +24,9 @@ class TokenService {
   }
 
   Future<String?> getRefreshToken() async {
-    return await _storage.read(key: _refreshTokenKey);
+    final token = await _storage.read(key: _refreshTokenKey);
+    if (token != null && token.isEmpty) return null;
+    return token;
   }
 
   Future<void> saveUserData(String userData) async {
@@ -30,7 +34,9 @@ class TokenService {
   }
 
   Future<String?> getUserData() async {
-    return await _storage.read(key: _userDataKey);
+    final data = await _storage.read(key: _userDataKey);
+    if (data != null && data.isEmpty) return null;
+    return data;
   }
 
   Future<void> clearTokens() async {
@@ -41,6 +47,6 @@ class TokenService {
 
   Future<bool> isLoggedIn() async {
     final token = await getAccessToken();
-    return token != null;
+    return token != null && token.isNotEmpty;
   }
 }

@@ -114,6 +114,89 @@ void main() {
     );
 
     blocTest<AuthBloc, AuthState>(
+      'Guest does NOT become AuthAuthenticated',
+      build: () {
+        when(() => mockAuthRepository.guestLogin()).thenAnswer(
+          (_) async => testGuestUser,
+        );
+        return AuthBloc(
+          authRepository: mockAuthRepository,
+          tokenService: mockTokenService,
+        );
+      },
+      act: (bloc) => bloc.add(GuestLoginRequested()),
+      expect: () => [
+        AuthLoading(),
+        isA<AuthGuestAuthenticated>(),
+      ],
+      verify: (bloc) {
+        expect(bloc.state, isA<AuthGuestAuthenticated>());
+        expect(bloc.state, isNot(isA<AuthAuthenticated>()));
+      },
+    );
+
+    blocTest<AuthBloc, AuthState>(
+      'emits [AuthLoading, AuthAuthenticated] when RegisterRequested succeeds',
+      build: () {
+        when(() => mockAuthRepository.register(
+          fullName: any(named: 'fullName'),
+          email: any(named: 'email'),
+          password: any(named: 'password'),
+          confirmPassword: any(named: 'confirmPassword'),
+          mobile: any(named: 'mobile'),
+        )).thenAnswer(
+          (_) async => LoginResponseModel(
+            accessToken: 'access_token',
+            refreshToken: 'refresh_token',
+            user: testUser,
+          ),
+        );
+        when(() => mockTokenService.saveUserData(any())).thenAnswer((_) async {});
+        return AuthBloc(
+          authRepository: mockAuthRepository,
+          tokenService: mockTokenService,
+        );
+      },
+      act: (bloc) => bloc.add(RegisterRequested(
+        fullName: 'Test User',
+        email: 'test@test.com',
+        password: 'password123',
+        confirmPassword: 'password123',
+      )),
+      expect: () => [
+        AuthLoading(),
+        AuthAuthenticated(user: testUser),
+      ],
+    );
+
+    blocTest<AuthBloc, AuthState>(
+      'emits [AuthLoading, AuthError] when RegisterRequested fails',
+      build: () {
+        when(() => mockAuthRepository.register(
+          fullName: any(named: 'fullName'),
+          email: any(named: 'email'),
+          password: any(named: 'password'),
+          confirmPassword: any(named: 'confirmPassword'),
+          mobile: any(named: 'mobile'),
+        )).thenThrow(Exception('Email already exists'));
+        return AuthBloc(
+          authRepository: mockAuthRepository,
+          tokenService: mockTokenService,
+        );
+      },
+      act: (bloc) => bloc.add(RegisterRequested(
+        fullName: 'Test User',
+        email: 'existing@test.com',
+        password: 'password123',
+        confirmPassword: 'password123',
+      )),
+      expect: () => [
+        AuthLoading(),
+        isA<AuthError>(),
+      ],
+    );
+
+    blocTest<AuthBloc, AuthState>(
       'emits AuthUnauthenticated when LogoutRequested',
       build: () {
         when(() => mockAuthRepository.logout()).thenAnswer((_) async {});

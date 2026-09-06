@@ -4,7 +4,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from repositories.user_repository import UserRepository
 from repositories.audit_repository import AuditRepository
 from core.validators import validate_password_strength
-from core.exceptions import ValidationException
+from core.exceptions import ValidationException, ConflictException
 from core.utils import get_client_ip
 from core.choices import UserRole
 from core.brute_force import BruteForceProtection
@@ -14,6 +14,59 @@ class AuthService:
     def __init__(self):
         self.user_repo = UserRepository()
         self.audit_repo = AuditRepository()
+
+    def register(self, full_name, email, password, mobile="", business_name=""):
+        existing = self.user_repo.get_by_email(email)
+        if existing:
+            raise ConflictException("An account with this email already exists")
+
+        from apps.tenants.models import Tenant, TenantSettings
+        from apps.users.models import User
+        from django.db import transaction
+
+        with transaction.atomic():
+            tenant_name = business_name if business_name else email.split("@")[0].title()
+            tenant = Tenant.objects.create(
+                business_name=tenant_name,
+                owner_name=full_name,
+                email=email,
+                mobile=mobile,
+            )
+            TenantSettings.objects.create(tenant=tenant)
+
+            user = User.objects.create_user(
+                email=email,
+                password=password,
+                full_name=full_name,
+                mobile=mobile,
+                role=UserRole.OWNER,
+                tenant=tenant,
+            )
+
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+        refresh_token = str(refresh)
+
+        self.user_repo.create_session(
+            user, access_token, refresh_token,
+            device_name="",
+            ip_address="",
+        )
+        self.audit_repo.log(
+            tenant=tenant, user=user,
+            module="AUTH", action="REGISTER",
+        )
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "user": {
+                "id": user.id,
+                "full_name": user.full_name,
+                "email": user.email,
+                "role": user.role,
+                "tenant_id": user.tenant_id,
+            },
+        }
 
     def login(self, email, password, request=None):
         ip = get_client_ip(request) if request else ""

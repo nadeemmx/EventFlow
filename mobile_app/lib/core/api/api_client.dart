@@ -7,6 +7,9 @@ import 'package:eventflow_app/core/services/token_service.dart';
 class ApiClient {
   late final Dio _dio;
   final TokenService _tokenService;
+  final StreamController<void> _authFailureController = StreamController<void>.broadcast();
+
+  Stream<void> get authFailure => _authFailureController.stream;
 
   ApiClient({required this._tokenService}) {
     _dio = Dio(
@@ -22,7 +25,7 @@ class ApiClient {
     );
 
     _dio.interceptors.addAll([
-      _AuthInterceptor(_tokenService),
+      _AuthInterceptor(_tokenService, _authFailureController),
       _ErrorInterceptor(),
       if (kDebugMode) LogInterceptor(
         request: true,
@@ -115,17 +118,20 @@ class ApiClient {
 
 class _AuthInterceptor extends Interceptor {
   final TokenService _tokenService;
+  final StreamController<void> _authFailureController;
   Completer<void>? _refreshCompleter;
+  bool _isRefreshing = false;
 
   static const _authPaths = [
     'auth/login/',
+    'auth/register/',
     'auth/refresh/',
     'auth/forgot-password/',
     'auth/reset-password/',
     'auth/change-password/',
   ];
 
-  _AuthInterceptor(this._tokenService);
+  _AuthInterceptor(this._tokenService, this._authFailureController);
 
   bool _isAuthEndpoint(String path) {
     return _authPaths.any((p) => path.contains(p));
@@ -136,9 +142,13 @@ class _AuthInterceptor extends Interceptor {
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) async {
-    final token = await _tokenService.getAccessToken();
-    if (token != null) {
-      options.headers['Authorization'] = 'Bearer $token';
+    try {
+      final token = await _tokenService.getAccessToken();
+      if (token != null && token.isNotEmpty) {
+        options.headers['Authorization'] = 'Bearer $token';
+      }
+    } catch (_) {
+      // Token read failed — proceed without Authorization header
     }
     handler.next(options);
   }
@@ -148,84 +158,94 @@ class _AuthInterceptor extends Interceptor {
     DioException err,
     ErrorInterceptorHandler handler,
   ) async {
-    if (err.response?.statusCode != 401) {
-      handler.next(err);
-      return;
-    }
-
-    if (_isAuthEndpoint(err.requestOptions.path)) {
-      handler.next(err);
-      return;
-    }
-
-    if (_refreshCompleter != null) {
-      await _refreshCompleter!.future;
-      final newToken = await _tokenService.getAccessToken();
-      if (newToken != null) {
-        err.requestOptions.headers['Authorization'] = 'Bearer $newToken';
-        final retryResponse = await Dio(BaseOptions(
-          baseUrl: ApiEndpoints.baseUrl,
-          connectTimeout: const Duration(seconds: 15),
-          receiveTimeout: const Duration(seconds: 15),
-          headers: {'Accept': 'application/json', 'Content-Type': 'application/json'},
-        )).fetch(err.requestOptions);
-        return handler.resolve(retryResponse);
-      }
-      handler.next(err);
-      return;
-    }
-
-    _refreshCompleter = Completer<void>();
     try {
-      final refreshToken = await _tokenService.getRefreshToken();
-      if (refreshToken == null) {
-        await _tokenService.clearTokens();
-        _refreshCompleter!.complete();
+      if (err.response?.statusCode != 401) {
         handler.next(err);
         return;
       }
 
-      final refreshDio = Dio(BaseOptions(
-        baseUrl: ApiEndpoints.baseUrl,
-        connectTimeout: const Duration(seconds: 15),
-        receiveTimeout: const Duration(seconds: 15),
-        headers: {'Accept': 'application/json', 'Content-Type': 'application/json'},
-      ));
-      final response = await refreshDio.post(
-        ApiEndpoints.refresh,
-        data: {'refresh_token': refreshToken},
-      );
+      if (_isAuthEndpoint(err.requestOptions.path)) {
+        handler.next(err);
+        return;
+      }
 
-      if (response.data is Map<String, dynamic> &&
-          response.data['success'] == true &&
-          response.data['data'] is Map<String, dynamic>) {
-        final newAccessToken = response.data['data']['access_token'] as String?;
-        if (newAccessToken == null) throw Exception('No access token in response');
+      if (_isRefreshing) {
+        await _refreshCompleter?.future;
+        final newToken = await _tokenService.getAccessToken();
+        if (newToken != null && newToken.isNotEmpty) {
+          err.requestOptions.headers['Authorization'] = 'Bearer $newToken';
+          final retryResponse = await Dio(BaseOptions(
+            baseUrl: ApiEndpoints.baseUrl,
+            connectTimeout: const Duration(seconds: 15),
+            receiveTimeout: const Duration(seconds: 15),
+            headers: {'Accept': 'application/json', 'Content-Type': 'application/json'},
+          )).fetch(err.requestOptions);
+          handler.resolve(retryResponse);
+          return;
+        }
+        handler.next(err);
+        return;
+      }
 
-        await _tokenService.saveAccessToken(newAccessToken);
-        err.requestOptions.headers['Authorization'] = 'Bearer $newAccessToken';
-        _refreshCompleter!.complete();
+      _isRefreshing = true;
+      _refreshCompleter = Completer<void>();
+      try {
+        final refreshToken = await _tokenService.getRefreshToken();
+        if (refreshToken == null || refreshToken.isEmpty) {
+          await _tokenService.clearTokens();
+          _authFailureController.add(null);
+          handler.next(err);
+          return;
+        }
 
-        final retryDio = Dio(BaseOptions(
+        final refreshDio = Dio(BaseOptions(
           baseUrl: ApiEndpoints.baseUrl,
           connectTimeout: const Duration(seconds: 15),
           receiveTimeout: const Duration(seconds: 15),
           headers: {'Accept': 'application/json', 'Content-Type': 'application/json'},
         ));
-        final retryResponse = await retryDio.fetch(err.requestOptions);
-        return handler.resolve(retryResponse);
-      } else {
-        throw Exception('Invalid refresh response');
+        final response = await refreshDio.post(
+          ApiEndpoints.refresh,
+          data: {'refresh_token': refreshToken},
+        );
+
+        if (response.data is Map<String, dynamic> &&
+            response.data['success'] == true &&
+            response.data['data'] is Map<String, dynamic>) {
+          final newAccessToken = response.data['data']['access_token'] as String?;
+          if (newAccessToken == null || newAccessToken.isEmpty) {
+            throw Exception('No access token in response');
+          }
+
+          await _tokenService.saveAccessToken(newAccessToken);
+          err.requestOptions.headers['Authorization'] = 'Bearer $newAccessToken';
+          _refreshCompleter!.complete();
+
+          final retryResponse = await Dio(BaseOptions(
+            baseUrl: ApiEndpoints.baseUrl,
+            connectTimeout: const Duration(seconds: 15),
+            receiveTimeout: const Duration(seconds: 15),
+            headers: {'Accept': 'application/json', 'Content-Type': 'application/json'},
+          )).fetch(err.requestOptions);
+          handler.resolve(retryResponse);
+          return;
+        } else {
+          throw Exception('Invalid refresh response');
+        }
+      } catch (e) {
+        if (_refreshCompleter != null && !_refreshCompleter!.isCompleted) {
+          _refreshCompleter!.completeError(e);
+        }
+        await _tokenService.clearTokens();
+        _authFailureController.add(null);
+        handler.next(err);
+      } finally {
+        _refreshCompleter = null;
+        _isRefreshing = false;
       }
-    } catch (e) {
-      if (!_refreshCompleter!.isCompleted) {
-        _refreshCompleter!.completeError(e);
-      }
-      await _tokenService.clearTokens();
-    } finally {
-      _refreshCompleter = null;
+    } catch (_) {
+      handler.next(err);
     }
-    handler.next(err);
   }
 }
 

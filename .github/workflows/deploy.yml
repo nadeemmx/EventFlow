@@ -1,0 +1,67 @@
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: eventflow-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p ${{ secrets.VPS_PORT || 22 }} ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Record commit
+        id: commit
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy backend and frontend
+        env:
+          SSH_KEY: ~/.ssh/deploy_key
+          SSH_PORT: ${{ secrets.VPS_PORT || 22 }}
+          SSH_HOST: ${{ secrets.VPS_HOST }}
+          SSH_USER: ${{ secrets.VPS_USER }}
+        run: |
+          scp -P "$SSH_PORT" -i "$SSH_KEY" \
+            deploy/deploy_production.sh \
+            "${SSH_USER}@${SSH_HOST}:/tmp/deploy_production.sh"
+
+          ssh -p "$SSH_PORT" -i "$SSH_KEY" "${SSH_USER}@${SSH_HOST}" \
+            "chmod +x /tmp/deploy_production.sh && bash /tmp/deploy_production.sh '${{ steps.commit.outputs.sha }}'"
+
+      - name: Health check
+        env:
+          SSH_KEY: ~/.ssh/deploy_key
+          SSH_PORT: ${{ secrets.VPS_PORT || 22 }}
+          SSH_HOST: ${{ secrets.VPS_HOST }}
+          SSH_USER: ${{ secrets.VPS_USER }}
+        run: |
+          ssh -p "$SSH_PORT" -i "$SSH_KEY" "${SSH_USER}@${SSH_HOST}" \
+            "bash /home/eventflow/eventflow/deploy/scripts/smoke_test.sh http://127.0.0.1 http://127.0.0.1 http://127.0.0.1:8080"
+
+      - name: Report success
+        if: success()
+        run: echo "Deployment successful — commit ${{ steps.commit.outputs.sha }}"
+
+      - name: Report failure
+        if: failure()
+        run: echo "::error::Deployment failed for commit ${{ steps.commit.outputs.sha }}"

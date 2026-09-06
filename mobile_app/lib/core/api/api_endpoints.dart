@@ -1,11 +1,12 @@
 class ApiEndpoints {
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://eventflow.baseify.in/api/v1/',
+    defaultValue: 'http://31.42.125.6/api/v1/',
   );
 
   // Auth
   static const String login = 'auth/login/';
+  static const String register = 'auth/register/';
   static const String refresh = 'auth/refresh/';
   static const String logout = 'auth/logout/';
   static const String forgotPassword = 'auth/forgot-password/';

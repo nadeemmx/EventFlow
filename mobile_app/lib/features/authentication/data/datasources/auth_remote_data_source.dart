@@ -25,6 +25,36 @@ class AuthRemoteDataSource {
     return apiResponse.data!;
   }
 
+  Future<LoginResponseModel> register({
+    required String fullName,
+    required String email,
+    required String password,
+    required String confirmPassword,
+    String? mobile,
+  }) async {
+    final data = <String, dynamic>{
+      'full_name': fullName,
+      'email': email,
+      'password': password,
+      'confirm_password': confirmPassword,
+    };
+    if (mobile != null && mobile.isNotEmpty) {
+      data['mobile'] = mobile;
+    }
+    final response = await _apiClient.post(
+      ApiEndpoints.register,
+      data: data,
+    );
+    final apiResponse = ApiResponse.fromJson(
+      response.data as Map<String, dynamic>,
+      (data) => LoginResponseModel.fromJson(data as Map<String, dynamic>),
+    );
+    if (!apiResponse.success || apiResponse.data == null) {
+      throw Exception(apiResponse.message);
+    }
+    return apiResponse.data!;
+  }
+
   Future<ApiResponse<void>> forgotPassword(String email) async {
     final response = await _apiClient.post(
       ApiEndpoints.forgotPassword,

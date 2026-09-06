@@ -22,11 +22,11 @@ void main() {
 
   group('Validators.password', () {
     test('returns null for valid password', () {
-      expect(Validators.password('password123'), null);
+      expect(Validators.password('Passw0rd!'), null);
     });
 
     test('returns error for too short password', () {
-      expect(Validators.password('12345'), 'Password must be at least 6 characters');
+      expect(Validators.password('12345'), 'Password must be at least 8 characters');
     });
 
     test('returns error for empty password', () {

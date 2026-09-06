@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'package:eventflow_app/injector.dart';
+import 'package:eventflow_app/core/api/api_client.dart';
 import 'package:eventflow_app/core/routes/app_router.dart';
 import 'package:eventflow_app/core/services/guest_session_service.dart';
 import 'package:eventflow_app/core/services/notification_service.dart';
@@ -45,6 +46,17 @@ class EventFlowApp extends StatefulWidget {
 
 class _EventFlowAppState extends State<EventFlowApp> {
   final _themeProvider = sl<ThemeProvider>();
+
+  @override
+  void initState() {
+    super.initState();
+    sl<ApiClient>().authFailure.listen((_) {
+      if (mounted) {
+        context.read<AuthBloc>().add(LogoutRequested());
+        sl<AppRouter>().router.go('/login');
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

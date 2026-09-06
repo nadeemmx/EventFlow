@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:eventflow_app/core/theme/app_colors.dart';
-import 'package:eventflow_app/core/theme/app_dimens.dart';
+import 'package:shimmer/shimmer.dart';
+import 'package:eventflow_app/core/theme/design_system.dart';
 import 'package:eventflow_app/core/utils/formatters.dart';
-import 'package:eventflow_app/core/widgets/premium_card.dart';
-import 'package:eventflow_app/core/widgets/premium_avatar.dart';
-import 'package:eventflow_app/core/widgets/status_chip.dart';
-import 'package:eventflow_app/core/widgets/section_header.dart';
-import 'package:eventflow_app/core/widgets/error_widget.dart';
-import 'package:eventflow_app/core/widgets/login_required_sheet.dart';
+import 'package:eventflow_app/core/widgets/components/eventflow_card.dart';
+import 'package:eventflow_app/core/widgets/components/eventflow_button.dart';
+import 'package:eventflow_app/core/widgets/components/eventflow_section_header.dart';
+import 'package:eventflow_app/core/widgets/components/eventflow_error_state.dart';
+import 'package:eventflow_app/core/widgets/components/eventflow_text_field.dart';
 import 'package:eventflow_app/features/bookings/presentation/bloc/booking_bloc.dart';
+import 'package:eventflow_app/features/bookings/presentation/widgets/booking_status_widgets.dart';
 import 'package:eventflow_app/features/authentication/presentation/bloc/auth_bloc.dart';
 
 class BookingDetailPage extends StatefulWidget {
@@ -21,79 +22,61 @@ class BookingDetailPage extends StatefulWidget {
   State<BookingDetailPage> createState() => _BookingDetailPageState();
 }
 
-class _BookingDetailPageState extends State<BookingDetailPage> {
+class _BookingDetailPageState extends State<BookingDetailPage>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+
   @override
   void initState() {
     super.initState();
     context.read<BookingBloc>().add(LoadBookingDetail(id: widget.id));
-  }
-
-  Color _statusColor(String status) {
-    switch (status) {
-      case 'CONFIRMED':
-        return AppColors.bookingConfirmed;
-      case 'TENTATIVE':
-        return AppColors.bookingTentative;
-      case 'COMPLETED':
-        return AppColors.bookingCompleted;
-      case 'CANCELLED':
-        return AppColors.bookingCancelled;
-      case 'IN_PROGRESS':
-        return AppColors.bookingInProgress;
-      default:
-        return AppColors.bookingDraft;
-    }
-  }
-
-  LinearGradient _statusGradient(String status) {
-    switch (status) {
-      case 'CONFIRMED':
-        return AppColors.successGradient;
-      case 'TENTATIVE':
-        return const LinearGradient(
-          colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        );
-      case 'IN_PROGRESS':
-        return const LinearGradient(
-          colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        );
-      case 'COMPLETED':
-        return const LinearGradient(
-          colors: [Color(0xFF059669), Color(0xFF047857)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        );
-      case 'CANCELLED':
-        return const LinearGradient(
-          colors: [Color(0xFFEF4444), Color(0xFFDC2626)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        );
-      default:
-        return AppColors.primaryGradient;
-    }
-  }
-
-  bool _isGuest(BuildContext context) {
-    return context.read<AuthBloc>().state is AuthGuestAuthenticated;
+    _animationController = AnimationController(
+      vsync: this,
+      duration: DesignSystem.durationSlow,
+    );
+    _fadeAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: DesignSystem.easeEmphasizedDecelerate,
+    );
+    _animationController.forward();
   }
 
   @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  bool get _isGuest => context.read<AuthBloc>().state is AuthGuestAuthenticated;
+
+  @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return BlocListener<BookingBloc, BookingState>(
       listener: (context, state) {
         if (state is BookingActionSuccess) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(state.message),
-              backgroundColor: AppColors.success,
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+                  const SizedBox(width: DesignSystem.spacing2),
+                  Expanded(
+                    child: Text(
+                      state.message,
+                      style: DesignSystem.bodyMedium.copyWith(
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: DesignSystem.success,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppDimens.radiusMd),
+                borderRadius: BorderRadius.circular(DesignSystem.radiusMd),
               ),
             ),
           );
@@ -101,42 +84,39 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
         }
       },
       child: Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: colorScheme.surface,
         appBar: AppBar(
-          backgroundColor: AppColors.background,
+          backgroundColor: colorScheme.surface,
           surfaceTintColor: Colors.transparent,
           elevation: 0,
           centerTitle: false,
-          title: const Text(
+          title: Text(
             'Booking Detail',
-            style: TextStyle(
-              fontSize: AppDimens.fontXxl,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
-              letterSpacing: -0.5,
+            style: DesignSystem.headlineSmall.copyWith(
+              color: colorScheme.onSurface,
             ),
           ),
           actions: [
             PopupMenuButton<String>(
               icon: Container(
-                padding: const EdgeInsets.all(AppDimens.sm),
+                padding: const EdgeInsets.all(DesignSystem.spacing2),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(AppDimens.radiusMd),
-                  border: Border.all(color: AppColors.borderLight),
+                  color: colorScheme.surfaceContainerLowest,
+                  borderRadius: BorderRadius.circular(DesignSystem.radiusMd),
+                  border: Border.all(color: colorScheme.outlineVariant),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.more_horiz_rounded,
-                  color: AppColors.textSecondary,
+                  color: colorScheme.onSurfaceVariant,
                   size: 20,
                 ),
               ),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppDimens.radiusMd),
+                borderRadius: BorderRadius.circular(DesignSystem.radiusLg),
               ),
               onSelected: (value) {
-                if (_isGuest(context)) {
-                  showLoginRequiredSheet(context);
+                if (_isGuest) {
+                  _showLoginRequired(context);
                   return;
                 }
                 switch (value) {
@@ -144,6 +124,7 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
                     context.push('/bookings/${widget.id}/edit');
                     break;
                   case 'confirm':
+                    HapticFeedback.mediumImpact();
                     context
                         .read<BookingBloc>()
                         .add(ConfirmBooking(id: widget.id));
@@ -154,87 +135,107 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
                 }
               },
               itemBuilder: (context) => [
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: 'edit',
                   child: Row(
                     children: [
-                      Icon(Icons.edit_outlined, size: 18, color: AppColors.textSecondary),
-                      SizedBox(width: 10),
-                      Text('Edit'),
+                      Icon(Icons.edit_outlined, size: 18, color: colorScheme.onSurfaceVariant),
+                      const SizedBox(width: DesignSystem.spacing3),
+                      Text(
+                        'Edit',
+                        style: DesignSystem.bodyMedium.copyWith(
+                          color: colorScheme.onSurface,
+                        ),
+                      ),
                     ],
                   ),
                 ),
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: 'confirm',
                   child: Row(
                     children: [
-                      Icon(Icons.check_circle_outline, size: 18, color: AppColors.success),
-                      SizedBox(width: 10),
-                      Text('Confirm'),
+                      Icon(Icons.check_circle_outline, size: 18, color: DesignSystem.success),
+                      const SizedBox(width: DesignSystem.spacing3),
+                      Text(
+                        'Confirm',
+                        style: DesignSystem.bodyMedium.copyWith(
+                          color: colorScheme.onSurface,
+                        ),
+                      ),
                     ],
                   ),
                 ),
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: 'cancel',
                   child: Row(
                     children: [
-                      Icon(Icons.cancel_outlined, size: 18, color: AppColors.error),
-                      SizedBox(width: 10),
-                      Text('Cancel', style: TextStyle(color: AppColors.error)),
+                      Icon(Icons.cancel_outlined, size: 18, color: colorScheme.error),
+                      const SizedBox(width: DesignSystem.spacing3),
+                      Text(
+                        'Cancel',
+                        style: DesignSystem.bodyMedium.copyWith(
+                          color: colorScheme.error,
+                        ),
+                      ),
                     ],
                   ),
                 ),
               ],
             ),
-            const SizedBox(width: AppDimens.sm),
+            const SizedBox(width: DesignSystem.spacing2),
           ],
         ),
         body: BlocBuilder<BookingBloc, BookingState>(
           builder: (context, state) {
             if (state is BookingsLoading) {
-              return const Center(
-                child: CircularProgressIndicator(color: AppColors.primary),
-              );
+              return _buildDetailSkeleton(colorScheme);
             }
             if (state is BookingDetailLoaded) {
               final booking = state.booking;
-              final statusColor = _statusColor(booking.status);
               return RefreshIndicator(
-                color: AppColors.primary,
-                backgroundColor: AppColors.surface,
+                color: colorScheme.primary,
+                backgroundColor: colorScheme.surface,
                 onRefresh: () async {
                   context
                       .read<BookingBloc>()
                       .add(LoadBookingDetail(id: widget.id));
                 },
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildStatusHeader(booking, statusColor),
-                      const SizedBox(height: AppDimens.lg),
-                      _buildCustomerSection(booking),
-                      const SizedBox(height: AppDimens.md),
-                      _buildEventDetailsSection(booking),
-                      const SizedBox(height: AppDimens.md),
-                      _buildPaymentSection(booking),
-                      if (booking.remarks != null &&
-                          booking.remarks!.isNotEmpty) ...[
-                        const SizedBox(height: AppDimens.md),
-                        _buildRemarksSection(booking),
-                      ],
-                      const SizedBox(height: AppDimens.xxl),
-                      _buildActionButtons(booking),
-                      const SizedBox(height: AppDimens.huge),
-                    ],
+                child: FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isWide = constraints.maxWidth > 600;
+                      return SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isWide ? DesignSystem.spacing8 : 0,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildStatusHeader(booking, colorScheme),
+                              const SizedBox(height: DesignSystem.spacing4),
+                              _buildStatusTimeline(booking, colorScheme),
+                              const SizedBox(height: DesignSystem.spacing4),
+                              if (isWide)
+                                _buildWideLayout(booking, colorScheme)
+                              else
+                                _buildCompactLayout(booking, colorScheme),
+                              const SizedBox(height: DesignSystem.spacing6),
+                              _buildActionButtons(booking, colorScheme),
+                              const SizedBox(height: DesignSystem.spacing10),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
               );
             }
             if (state is BookingError) {
-              return AppErrorWidget(
-                message: state.message,
+              return EventFlowErrorState.generic(
                 onRetry: () => context
                     .read<BookingBloc>()
                     .add(LoadBookingDetail(id: widget.id)),
@@ -247,47 +248,51 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
     );
   }
 
-  Widget _buildStatusHeader(dynamic booking, Color statusColor) {
+  Widget _buildStatusHeader(dynamic booking, ColorScheme colorScheme) {
+    final statusInfo = BookingStatusHelper.getInfo(booking.status, colorScheme);
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.fromLTRB(AppDimens.lg, 0, AppDimens.lg, 0),
+      margin: const EdgeInsets.fromLTRB(DesignSystem.spacing4, 0, DesignSystem.spacing4, 0),
       decoration: BoxDecoration(
-        gradient: _statusGradient(booking.status),
-        borderRadius: BorderRadius.circular(AppDimens.radiusXl),
+        gradient: LinearGradient(
+          colors: [
+            statusInfo.color,
+            statusInfo.color.withValues(alpha: 0.8),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(DesignSystem.radiusXl),
         boxShadow: [
           BoxShadow(
-            color: statusColor.withValues(alpha: 0.3),
+            color: statusInfo.color.withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
         ],
       ),
-      padding: const EdgeInsets.all(AppDimens.xxl),
+      padding: const EdgeInsets.all(DesignSystem.spacing6),
       child: Column(
         children: [
-          StatusChip(
-            label: Formatters.statusLabel(booking.status),
-            color: Colors.white,
-            backgroundColor: Colors.white.withValues(alpha: 0.2),
-            showDot: true,
+          BookingStatusBadge(
+            status: booking.status,
+            showIcon: true,
+            showLabel: true,
           ),
-          const SizedBox(height: AppDimens.md),
+          const SizedBox(height: DesignSystem.spacing3),
           Text(
             booking.bookingNumber,
-            style: TextStyle(
-              fontSize: AppDimens.fontLg,
-              fontWeight: FontWeight.w600,
+            style: DesignSystem.titleMedium.copyWith(
               color: Colors.white.withValues(alpha: 0.9),
               letterSpacing: 0.5,
             ),
           ),
-          const SizedBox(height: AppDimens.xs),
+          const SizedBox(height: DesignSystem.spacing1),
           Text(
             Formatters.currency(booking.totalAmount),
-            style: const TextStyle(
-              fontSize: AppDimens.fontDisplay,
-              fontWeight: FontWeight.w800,
+            style: DesignSystem.headlineLarge.copyWith(
               color: Colors.white,
+              fontWeight: FontWeight.w800,
               letterSpacing: -1,
             ),
           ),
@@ -296,45 +301,116 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
     );
   }
 
-  Widget _buildCustomerSection(dynamic booking) {
+  Widget _buildStatusTimeline(dynamic booking, ColorScheme colorScheme) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: DesignSystem.spacing4),
+      child: BookingStatusTimeline(currentStatus: booking.status),
+    );
+  }
+
+  Widget _buildCompactLayout(dynamic booking, ColorScheme colorScheme) {
+    return Column(
+      children: [
+        _buildCustomerSection(booking, colorScheme),
+        const SizedBox(height: DesignSystem.spacing3),
+        _buildEventDetailsSection(booking, colorScheme),
+        const SizedBox(height: DesignSystem.spacing3),
+        _buildPaymentSection(booking, colorScheme),
+        if (booking.remarks != null && booking.remarks!.isNotEmpty) ...[
+          const SizedBox(height: DesignSystem.spacing3),
+          _buildRemarksSection(booking, colorScheme),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildWideLayout(dynamic booking, ColorScheme colorScheme) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            children: [
+              _buildCustomerSection(booking, colorScheme),
+              const SizedBox(height: DesignSystem.spacing3),
+              _buildRemarksSection(booking, colorScheme),
+            ],
+          ),
+        ),
+        const SizedBox(width: DesignSystem.spacing4),
+        Expanded(
+          child: Column(
+            children: [
+              _buildEventDetailsSection(booking, colorScheme),
+              const SizedBox(height: DesignSystem.spacing3),
+              _buildPaymentSection(booking, colorScheme),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCustomerSection(dynamic booking, ColorScheme colorScheme) {
     final initials = booking.customerName.isNotEmpty
         ? booking.customerName[0].toUpperCase()
         : '?';
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppDimens.lg),
-      child: PremiumCard(
-        margin: EdgeInsets.zero,
+      padding: const EdgeInsets.symmetric(horizontal: DesignSystem.spacing4),
+      child: EventFlowCard(
+        padding: const EdgeInsets.all(DesignSystem.spacing4),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SectionHeader(title: 'Customer', padding: EdgeInsets.zero),
-            const SizedBox(height: AppDimens.sm),
+            EventFlowSectionHeader(
+              title: 'Customer',
+              leadingIcon: Icons.person_outline_rounded,
+              padding: EdgeInsets.zero,
+            ),
+            const SizedBox(height: DesignSystem.spacing3),
             Row(
               children: [
-                GradientAvatar(
-                  initials: initials,
-                  radius: AppDimens.avatarSm / 2,
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    gradient: DesignSystem.primaryGradient,
+                    borderRadius: BorderRadius.circular(DesignSystem.radiusMd),
+                  ),
+                  child: Center(
+                    child: Text(
+                      initials,
+                      style: DesignSystem.titleMedium.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
                 ),
-                const SizedBox(width: AppDimens.md),
+                const SizedBox(width: DesignSystem.spacing3),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         booking.customerName,
-                        style: const TextStyle(
-                          fontSize: AppDimens.fontBase,
+                        style: DesignSystem.bodyLarge.copyWith(
+                          color: colorScheme.onSurface,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 2),
-                      Text(
-                        'ID: ${booking.customer}',
-                        style: const TextStyle(
-                          fontSize: AppDimens.fontSm,
-                          color: AppColors.textSecondary,
-                        ),
+                      Row(
+                        children: [
+                          Icon(Icons.tag_rounded, size: 12, color: colorScheme.onSurfaceVariant),
+                          const SizedBox(width: 4),
+                          Text(
+                            'ID: ${booking.customer}',
+                            style: DesignSystem.bodySmall.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -347,24 +423,48 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
     );
   }
 
-  Widget _buildEventDetailsSection(dynamic booking) {
+  Widget _buildEventDetailsSection(dynamic booking, ColorScheme colorScheme) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppDimens.lg),
-      child: PremiumCard(
-        margin: EdgeInsets.zero,
+      padding: const EdgeInsets.symmetric(horizontal: DesignSystem.spacing4),
+      child: EventFlowCard(
+        padding: const EdgeInsets.all(DesignSystem.spacing4),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SectionHeader(title: 'Event Details', padding: EdgeInsets.zero),
-            const SizedBox(height: AppDimens.sm),
-            _detailRow('Event Type', Formatters.capitalize(booking.eventType)),
-            const Divider(height: AppDimens.xxl, color: AppColors.borderLight),
-            _detailRow('Event Date', booking.eventDate),
-            const Divider(height: AppDimens.xxl, color: AppColors.borderLight),
-            _detailRow('Guest Count', booking.guestCount.toString()),
+            EventFlowSectionHeader(
+              title: 'Event Details',
+              leadingIcon: Icons.event_outlined,
+              padding: EdgeInsets.zero,
+            ),
+            const SizedBox(height: DesignSystem.spacing3),
+            _detailRow(
+              Icons.category_outlined,
+              'Event Type',
+              Formatters.capitalize(booking.eventType),
+              colorScheme,
+            ),
+            Divider(height: DesignSystem.spacing5, color: colorScheme.outlineVariant),
+            _detailRow(
+              Icons.calendar_today_rounded,
+              'Event Date',
+              booking.eventDate,
+              colorScheme,
+            ),
+            Divider(height: DesignSystem.spacing5, color: colorScheme.outlineVariant),
+            _detailRow(
+              Icons.people_outline_rounded,
+              'Guest Count',
+              booking.guestCount.toString(),
+              colorScheme,
+            ),
             if (booking.venueName != null) ...[
-              const Divider(height: AppDimens.xxl, color: AppColors.borderLight),
-              _detailRow('Venue', booking.venueName!),
+              Divider(height: DesignSystem.spacing5, color: colorScheme.outlineVariant),
+              _detailRow(
+                Icons.location_city_outlined,
+                'Venue',
+                booking.venueName!,
+                colorScheme,
+              ),
             ],
           ],
         ),
@@ -372,43 +472,68 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
     );
   }
 
-  Widget _buildPaymentSection(dynamic booking) {
+  Widget _buildPaymentSection(dynamic booking, ColorScheme colorScheme) {
     final balance = booking.totalAmount - booking.advanceAmount;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppDimens.lg),
-      child: PremiumCard(
-        margin: EdgeInsets.zero,
+      padding: const EdgeInsets.symmetric(horizontal: DesignSystem.spacing4),
+      child: EventFlowCard(
+        padding: const EdgeInsets.all(DesignSystem.spacing4),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SectionHeader(title: 'Payment', padding: EdgeInsets.zero),
-            const SizedBox(height: AppDimens.sm),
-            _detailRow('Total Amount', Formatters.currency(booking.totalAmount)),
-            const Divider(height: AppDimens.xxl, color: AppColors.borderLight),
-            _detailRow('Advance Paid', Formatters.currency(booking.advanceAmount)),
-            const Divider(height: AppDimens.xxl, color: AppColors.borderLight),
-            _detailRow('Balance', Formatters.currency(balance)),
+            EventFlowSectionHeader(
+              title: 'Payment',
+              leadingIcon: Icons.payments_outlined,
+              padding: EdgeInsets.zero,
+            ),
+            const SizedBox(height: DesignSystem.spacing3),
+            _detailRow(
+              Icons.currency_rupee_rounded,
+              'Total Amount',
+              Formatters.currency(booking.totalAmount),
+              colorScheme,
+              isHighlighted: true,
+            ),
+            Divider(height: DesignSystem.spacing5, color: colorScheme.outlineVariant),
+            _detailRow(
+              Icons.account_balance_wallet_outlined,
+              'Advance Paid',
+              Formatters.currency(booking.advanceAmount),
+              colorScheme,
+            ),
+            Divider(height: DesignSystem.spacing5, color: colorScheme.outlineVariant),
+            _detailRow(
+              Icons.receipt_long_outlined,
+              'Balance',
+              Formatters.currency(balance),
+              colorScheme,
+              isHighlighted: balance > 0,
+              highlightColor: balance > 0 ? DesignSystem.warning : null,
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildRemarksSection(dynamic booking) {
+  Widget _buildRemarksSection(dynamic booking, ColorScheme colorScheme) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppDimens.lg),
-      child: PremiumCard(
-        margin: EdgeInsets.zero,
+      padding: const EdgeInsets.symmetric(horizontal: DesignSystem.spacing4),
+      child: EventFlowCard(
+        padding: const EdgeInsets.all(DesignSystem.spacing4),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SectionHeader(title: 'Remarks', padding: EdgeInsets.zero),
-            const SizedBox(height: AppDimens.sm),
+            EventFlowSectionHeader(
+              title: 'Remarks',
+              leadingIcon: Icons.notes_rounded,
+              padding: EdgeInsets.zero,
+            ),
+            const SizedBox(height: DesignSystem.spacing3),
             Text(
               booking.remarks!,
-              style: const TextStyle(
-                fontSize: AppDimens.fontMd,
-                color: AppColors.textSecondary,
+              style: DesignSystem.bodyMedium.copyWith(
+                color: colorScheme.onSurfaceVariant,
                 height: 1.5,
               ),
             ),
@@ -418,217 +543,308 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
     );
   }
 
-  Widget _buildActionButtons(dynamic booking) {
-    final isGuest = _isGuest(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppDimens.lg),
-      child: Column(
-        children: [
-          if (booking.status == 'TENTATIVE' || booking.status == 'DRAFT')
-            _premiumButton(
-              label: 'Confirm Booking',
-              icon: Icons.check_circle_outline_rounded,
-              gradient: AppColors.successGradient,
-              onPressed: isGuest
-                  ? () => showLoginRequiredSheet(context)
-                  : () => context
-                      .read<BookingBloc>()
-                      .add(ConfirmBooking(id: widget.id)),
-            ),
-          if (booking.status == 'CONFIRMED')
-            _premiumButton(
-              label: 'Mark In Progress',
-              icon: Icons.play_circle_outline_rounded,
-              gradient: AppColors.primaryGradient,
-              onPressed: isGuest
-                  ? () => showLoginRequiredSheet(context)
-                  : () => context
-                      .read<BookingBloc>()
-                      .add(MarkBookingInProgress(id: widget.id)),
-            ),
-          if (booking.status == 'IN_PROGRESS')
-            _premiumButton(
-              label: 'Mark Completed',
-              icon: Icons.task_alt_rounded,
-              gradient: AppColors.successGradient,
-              onPressed: isGuest
-                  ? () => showLoginRequiredSheet(context)
-                  : () => context
-                      .read<BookingBloc>()
-                      .add(MarkBookingCompleted(id: widget.id)),
-            ),
-          if (booking.status != 'COMPLETED' &&
-              booking.status != 'CANCELLED') ...[
-            const SizedBox(height: AppDimens.md),
-            SizedBox(
-              width: double.infinity,
-              height: AppDimens.buttonHeight,
-              child: OutlinedButton.icon(
-                onPressed: isGuest
-                    ? () => showLoginRequiredSheet(context)
-                    : () => _showCancelDialog(context),
-                icon: const Icon(Icons.cancel_outlined, size: 20),
-                label: const Text(
-                  'Cancel Booking',
-                  style: TextStyle(
-                    fontSize: AppDimens.fontMd,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.error,
-                  side: const BorderSide(color: AppColors.error, width: 1.5),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppDimens.radiusMd),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _premiumButton({
-    required String label,
-    required IconData icon,
-    required Gradient gradient,
-    required VoidCallback onPressed,
+  Widget _detailRow(
+    IconData icon,
+    String label,
+    String value,
+    ColorScheme colorScheme, {
+    bool isHighlighted = false,
+    Color? highlightColor,
   }) {
-    return SizedBox(
-      width: double.infinity,
-      height: AppDimens.buttonHeight,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: gradient,
-          borderRadius: BorderRadius.circular(AppDimens.radiusMd),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.3),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: ElevatedButton.icon(
-          onPressed: onPressed,
-          icon: Icon(icon, size: 20),
-          label: Text(
-            label,
-            style: const TextStyle(
-              fontSize: AppDimens.fontMd,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.transparent,
-            foregroundColor: Colors.white,
-            shadowColor: Colors.transparent,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppDimens.radiusMd),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _detailRow(String label, String value) {
+    final valueColor = highlightColor ?? colorScheme.onSurface;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppDimens.xs),
+      padding: const EdgeInsets.symmetric(vertical: DesignSystem.spacing1),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: AppDimens.fontMd,
-              color: AppColors.textSecondary,
+          Icon(
+            icon,
+            size: 18,
+            color: colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: DesignSystem.spacing2),
+          Expanded(
+            child: Text(
+              label,
+              style: DesignSystem.bodyMedium.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
           Text(
             value,
-            style: const TextStyle(
-              fontSize: AppDimens.fontMd,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
+            style: DesignSystem.bodyMedium.copyWith(
+              color: valueColor,
+              fontWeight: isHighlighted ? FontWeight.w700 : FontWeight.w600,
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildActionButtons(dynamic booking, ColorScheme colorScheme) {
+    final isGuest = _isGuest;
+    final isActive = booking.status != 'COMPLETED' && booking.status != 'CANCELLED';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: DesignSystem.spacing4),
+      child: Column(
+        children: [
+          if (booking.status == 'TENTATIVE' || booking.status == 'DRAFT')
+            EventFlowButton.filled(
+              label: 'Confirm Booking',
+              icon: Icons.check_circle_outline_rounded,
+              isExpanded: true,
+              size: EventFlowButtonSize.large,
+              onPressed: isGuest
+                  ? () => _showLoginRequired(context)
+                  : () {
+                      HapticFeedback.mediumImpact();
+                      context
+                          .read<BookingBloc>()
+                          .add(ConfirmBooking(id: widget.id));
+                    },
+            ),
+          if (booking.status == 'CONFIRMED')
+            EventFlowButton.filled(
+              label: 'Mark In Progress',
+              icon: Icons.play_circle_outline_rounded,
+              isExpanded: true,
+              size: EventFlowButtonSize.large,
+              onPressed: isGuest
+                  ? () => _showLoginRequired(context)
+                  : () {
+                      HapticFeedback.mediumImpact();
+                      context
+                          .read<BookingBloc>()
+                          .add(MarkBookingInProgress(id: widget.id));
+                    },
+            ),
+          if (booking.status == 'IN_PROGRESS')
+            EventFlowButton.filled(
+              label: 'Mark Completed',
+              icon: Icons.task_alt_rounded,
+              isExpanded: true,
+              size: EventFlowButtonSize.large,
+              onPressed: isGuest
+                  ? () => _showLoginRequired(context)
+                  : () {
+                      HapticFeedback.mediumImpact();
+                      context
+                          .read<BookingBloc>()
+                          .add(MarkBookingCompleted(id: widget.id));
+                    },
+            ),
+          if (isActive) ...[
+            const SizedBox(height: DesignSystem.spacing3),
+            EventFlowButton.outlined(
+              label: 'Cancel Booking',
+              icon: Icons.cancel_outlined,
+              isExpanded: true,
+              size: EventFlowButtonSize.large,
+              foregroundColor: colorScheme.error,
+              onPressed: isGuest
+                  ? () => _showLoginRequired(context)
+                  : () => _showCancelDialog(context),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailSkeleton(ColorScheme colorScheme) {
+    return Shimmer.fromColors(
+      baseColor: colorScheme.surfaceContainerHighest,
+      highlightColor: colorScheme.surfaceContainerLowest,
+      child: SingleChildScrollView(
+        child: Column(
+          children: [
+            Container(
+              height: 200,
+              margin: const EdgeInsets.all(DesignSystem.spacing4),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(DesignSystem.radiusXl),
+              ),
+            ),
+            Container(
+              height: 80,
+              margin: const EdgeInsets.symmetric(horizontal: DesignSystem.spacing4),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(DesignSystem.radiusLg),
+              ),
+            ),
+            const SizedBox(height: DesignSystem.spacing4),
+            ...List.generate(3, (index) => Container(
+              height: 120,
+              margin: const EdgeInsets.symmetric(
+                horizontal: DesignSystem.spacing4,
+                vertical: DesignSystem.spacing2,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(DesignSystem.radiusLg),
+              ),
+            )),
+          ],
+        ),
       ),
     );
   }
 
   void _showCancelDialog(BuildContext context) {
-    if (_isGuest(context)) {
-      showLoginRequiredSheet(context);
+    if (_isGuest) {
+      _showLoginRequired(context);
       return;
     }
+    final colorScheme = Theme.of(context).colorScheme;
     final remarksController = TextEditingController();
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppDimens.dialogRadius),
+          borderRadius: BorderRadius.circular(DesignSystem.radiusXl),
         ),
-        title: const Row(
+        icon: Icon(
+          Icons.cancel_outlined,
+          color: colorScheme.error,
+          size: 32,
+        ),
+        title: Text(
+          'Cancel Booking',
+          style: DesignSystem.titleLarge.copyWith(
+            color: colorScheme.onSurface,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.cancel_outlined, color: AppColors.error, size: 24),
-            SizedBox(width: AppDimens.sm),
             Text(
-              'Cancel Booking',
-              style: TextStyle(
-                fontSize: AppDimens.fontLg,
-                fontWeight: FontWeight.w700,
+              'Are you sure you want to cancel this booking? This action cannot be undone.',
+              style: DesignSystem.bodyMedium.copyWith(
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
+            const SizedBox(height: DesignSystem.spacing3),
+            EventFlowTextField(
+              controller: remarksController,
+              label: 'Cancellation reason (optional)',
+              prefixIcon: Icons.notes_rounded,
+              maxLines: 3,
+            ),
           ],
-        ),
-        content: TextField(
-          controller: remarksController,
-          decoration: InputDecoration(
-            labelText: 'Cancellation reason (optional)',
-            labelStyle: const TextStyle(color: AppColors.textSecondary),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppDimens.radiusMd),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppDimens.radiusMd),
-              borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
-            ),
-          ),
-          maxLines: 3,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text(
+            child: Text(
               'Go Back',
-              style: TextStyle(color: AppColors.textSecondary),
+              style: TextStyle(color: colorScheme.onSurfaceVariant),
             ),
           ),
-          DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: AppColors.accentGradient,
-              borderRadius: BorderRadius.circular(AppDimens.radiusSm),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              HapticFeedback.mediumImpact();
+              context.read<BookingBloc>().add(CancelBooking(
+                id: widget.id,
+                remarks: remarksController.text,
+              ));
+            },
+            style: FilledButton.styleFrom(
+              backgroundColor: colorScheme.error,
+              foregroundColor: colorScheme.onError,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(DesignSystem.radiusMd),
+              ),
             ),
-            child: TextButton(
-              onPressed: () {
-                Navigator.pop(ctx);
-                context.read<BookingBloc>().add(CancelBooking(
-                    id: widget.id, remarks: remarksController.text));
-              },
-              child: const Text(
-                'Cancel Booking',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
+            child: const Text('Cancel Booking'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLoginRequired(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(DesignSystem.radiusXl),
+        ),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(DesignSystem.spacing6),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: colorScheme.outlineVariant,
+                borderRadius: BorderRadius.circular(DesignSystem.radiusFull),
+              ),
+            ),
+            const SizedBox(height: DesignSystem.spacing4),
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: colorScheme.primaryContainer,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.lock_outline_rounded,
+                size: 32,
+                color: colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: DesignSystem.spacing4),
+            Text(
+              'Sign in required',
+              style: DesignSystem.titleLarge.copyWith(
+                color: colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: DesignSystem.spacing2),
+            Text(
+              'Sign in to manage bookings',
+              style: DesignSystem.bodyMedium.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: DesignSystem.spacing5),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  context.push('/login');
+                },
+                icon: const Icon(Icons.login_rounded, size: 18),
+                label: const Text('Sign in'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: colorScheme.primary,
+                  foregroundColor: colorScheme.onPrimary,
+                  padding: const EdgeInsets.symmetric(
+                    vertical: DesignSystem.spacing3,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(DesignSystem.radiusMd),
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: DesignSystem.spacing3),
+          ],
+        ),
       ),
     );
   }

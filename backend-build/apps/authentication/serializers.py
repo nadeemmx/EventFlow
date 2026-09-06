@@ -2,6 +2,21 @@ from rest_framework import serializers
 from core.validators import validate_password_strength
 
 
+class RegisterSerializer(serializers.Serializer):
+    full_name = serializers.CharField(max_length=255)
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True, min_length=8)
+    confirm_password = serializers.CharField(write_only=True)
+    mobile = serializers.CharField(required=False, allow_blank=True, max_length=30)
+    business_name = serializers.CharField(required=False, allow_blank=True, max_length=255)
+
+    def validate(self, data):
+        if data["password"] != data["confirm_password"]:
+            raise serializers.ValidationError({"confirm_password": "Passwords do not match"})
+        validate_password_strength(data["password"])
+        return data
+
+
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)

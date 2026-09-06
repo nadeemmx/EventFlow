@@ -1,22 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:eventflow_app/core/theme/app_colors.dart';
-import 'package:eventflow_app/core/theme/app_dimens.dart';
+import 'package:eventflow_app/core/theme/design_system.dart';
 import 'package:eventflow_app/core/utils/formatters.dart';
-import 'package:eventflow_app/core/widgets/premium_search_bar.dart';
-import 'package:eventflow_app/core/widgets/premium_card.dart';
-import 'package:eventflow_app/core/widgets/premium_avatar.dart';
-import 'package:eventflow_app/core/widgets/premium_animated_widgets.dart';
-import 'package:eventflow_app/core/widgets/status_chip.dart';
-import 'package:eventflow_app/core/widgets/empty_state_widget.dart';
-import 'package:eventflow_app/core/widgets/error_widget.dart';
-import 'package:eventflow_app/core/widgets/loading_widget.dart';
-import 'package:eventflow_app/core/widgets/demo_banner.dart';
-import 'package:eventflow_app/core/widgets/login_required_sheet.dart';
-import 'package:eventflow_app/core/widgets/swipe_action_wrapper.dart';
-import 'package:eventflow_app/core/widgets/enhanced_search_sheet.dart';
+import 'package:eventflow_app/core/widgets/components/eventflow_empty_state.dart';
+import 'package:eventflow_app/core/widgets/components/eventflow_error_state.dart';
 import 'package:eventflow_app/features/bookings/presentation/bloc/booking_bloc.dart';
+import 'package:eventflow_app/features/bookings/presentation/widgets/booking_status_widgets.dart';
 import 'package:eventflow_app/features/authentication/presentation/bloc/auth_bloc.dart';
 
 class BookingListPage extends StatefulWidget {
@@ -28,9 +21,9 @@ class BookingListPage extends StatefulWidget {
 
 class _BookingListPageState extends State<BookingListPage> {
   final _searchController = TextEditingController();
-  String? _statusFilter;
+  String _statusFilter = 'ALL';
   final _scrollController = ScrollController();
-  Map<String, dynamic> _activeFilters = {};
+  bool _isSearchFocused = false;
 
   @override
   void initState() {
@@ -55,65 +48,20 @@ class _BookingListPageState extends State<BookingListPage> {
           LoadBookings(
             page: state.currentPage + 1,
             search: _searchController.text,
-            status: _statusFilter,
+            status: _statusFilter == 'ALL' ? null : _statusFilter,
           ),
         );
       }
     }
   }
 
-  Color _statusColor(String status) {
-    switch (status) {
-      case 'CONFIRMED':
-        return AppColors.bookingConfirmed;
-      case 'TENTATIVE':
-        return AppColors.bookingTentative;
-      case 'COMPLETED':
-        return AppColors.bookingCompleted;
-      case 'CANCELLED':
-        return AppColors.bookingCancelled;
-      case 'IN_PROGRESS':
-        return AppColors.bookingInProgress;
-      default:
-        return AppColors.bookingDraft;
-    }
-  }
-
-  LinearGradient _avatarGradient(String status) {
-    switch (status) {
-      case 'CONFIRMED':
-        return AppColors.successGradient;
-      case 'TENTATIVE':
-        return const LinearGradient(
-          colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        );
-      case 'IN_PROGRESS':
-        return const LinearGradient(
-          colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        );
-      case 'COMPLETED':
-        return const LinearGradient(
-          colors: [Color(0xFF059669), Color(0xFF047857)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        );
-      case 'CANCELLED':
-        return const LinearGradient(
-          colors: [Color(0xFFEF4444), Color(0xFFDC2626)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        );
-      default:
-        return AppColors.primaryGradient;
-    }
-  }
+  bool get _isGuest => context.read<AuthBloc>().state is AuthGuestAuthenticated;
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isWideScreen = screenWidth > 600;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -121,44 +69,31 @@ class _BookingListPageState extends State<BookingListPage> {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: false,
-        title: const Text(
+        title: Text(
           'Bookings',
-          style: TextStyle(
-            fontSize: AppDimens.fontXxl,
-            fontWeight: FontWeight.w700,
+          style: DesignSystem.headlineSmall.copyWith(
             color: AppColors.textPrimary,
-            letterSpacing: -0.5,
           ),
         ),
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: AppDimens.md),
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: AppColors.primaryGradient,
-                borderRadius: BorderRadius.circular(AppDimens.radiusMd),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: IconButton(
-                icon: const Icon(
-                  Icons.add_rounded,
-                  color: Colors.white,
-                  size: 22,
+            padding: const EdgeInsets.only(right: 12),
+            child: ElevatedButton.icon(
+              onPressed: () {
+                if (_isGuest) {
+                  _showLoginRequired(context);
+                } else {
+                  context.push('/bookings/new');
+                }
+              },
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: isWideScreen ? const Text('New') : const SizedBox.shrink(),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(DesignSystem.radiusMd),
                 ),
-                onPressed: () {
-                  final authState = context.read<AuthBloc>().state;
-                  if (authState is AuthGuestAuthenticated) {
-                    showLoginRequiredSheet(context);
-                  } else {
-                    context.push('/bookings/new');
-                  }
-                },
               ),
             ),
           ),
@@ -166,98 +101,14 @@ class _BookingListPageState extends State<BookingListPage> {
       ),
       body: Column(
         children: [
-          const DemoBanner(),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppDimens.lg,
-              AppDimens.sm,
-              AppDimens.lg,
-              AppDimens.sm,
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: PremiumSearchBar(
-                    controller: _searchController,
-                    hintText: 'Search bookings...',
-                    onSubmitted: (v) => context.read<BookingBloc>().add(
-                      LoadBookings(search: v, refresh: true),
-                    ),
-                    onClear: () => context.read<BookingBloc>().add(
-                      const LoadBookings(refresh: true),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: AppDimens.sm),
-                Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Container(
-                      height: 48,
-                      width: 48,
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(AppDimens.radiusMd),
-                        border: Border.all(color: AppColors.borderLight),
-                      ),
-                      child: IconButton(
-                        icon: const Icon(
-                          Icons.tune_rounded,
-                          color: AppColors.textTertiary,
-                          size: 20,
-                        ),
-                        onPressed: _openFilterSheet,
-                      ),
-                    ),
-                    if (_activeFilters.isNotEmpty)
-                      Positioned(
-                        top: 6,
-                        right: 6,
-                        child: Container(
-                          width: 18,
-                          height: 18,
-                          decoration: const BoxDecoration(
-                            color: AppColors.primary,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Center(
-                            child: Text(
-                              '${_activeFilters.length}',
-                              style: const TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          SizedBox(
-            height: AppDimens.chipHeight + 8,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: AppDimens.lg),
-              children: [
-                _buildFilterChip('All', null),
-                _buildFilterChip('Confirmed', 'CONFIRMED'),
-                _buildFilterChip('Tentative', 'TENTATIVE'),
-                _buildFilterChip('In Progress', 'IN_PROGRESS'),
-                _buildFilterChip('Completed', 'COMPLETED'),
-                _buildFilterChip('Cancelled', 'CANCELLED'),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppDimens.xs),
+          _buildSearchBar(),
+          _buildFilterChips(),
+          const SizedBox(height: 4),
           Expanded(
             child: BlocBuilder<BookingBloc, BookingState>(
               builder: (context, state) {
                 if (state is BookingsLoading) {
-                  return const ShimmerList();
+                  return _buildSkeleton();
                 }
                 if (state is BookingDetailLoaded ||
                     state is BookingActionSuccess) {
@@ -266,64 +117,18 @@ class _BookingListPageState extends State<BookingListPage> {
                   );
                 }
                 if (state is BookingError) {
-                  return AppErrorWidget(
-                    message: state.message,
+                  return EventFlowErrorState.generic(
                     onRetry: () =>
                         context.read<BookingBloc>().add(const LoadBookings()),
                   );
                 }
                 if (state is BookingsLoaded) {
                   if (state.bookings.isEmpty) {
-                    return EmptyStateWidget(
-                      icon: Icons.event_busy_rounded,
-                      title: 'No bookings found',
-                      subtitle: 'Create your first booking to get started',
-                      tips: [
-                        'Tap the + button to create a new booking',
-                        'Use filters to narrow down results',
-                        'Pull down to refresh the list',
-                      ],
-                    );
+                    return _buildEmptyState();
                   }
-                  return RefreshIndicator(
-                    color: AppColors.primary,
-                    backgroundColor: AppColors.surface,
-                    onRefresh: () async {
-                      context.read<BookingBloc>().add(
-                        const LoadBookings(refresh: true),
-                      );
-                    },
-                    child: ListView.builder(
-                      controller: _scrollController,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppDimens.lg,
-                        vertical: AppDimens.sm,
-                      ),
-                      itemCount:
-                          state.bookings.length + (state.hasMore ? 1 : 0),
-                      itemBuilder: (context, index) {
-                        if (index >= state.bookings.length) {
-                          return const Padding(
-                            padding: EdgeInsets.all(AppDimens.lg),
-                            child: Center(
-                              child: CircularProgressIndicator(
-                                color: AppColors.primary,
-                                strokeWidth: 2.5,
-                              ),
-                            ),
-                          );
-                        }
-                        final booking = state.bookings[index];
-                        return StaggeredListItem(
-                          index: index,
-                          totalCount: state.bookings.length,
-                          child: _buildBookingItem(booking),
-                        );
-                      },
-                    ),
-                  );
+                  return _buildBookingList(state);
                 }
-                return const ShimmerList();
+                return _buildSkeleton();
               },
             ),
           ),
@@ -332,196 +137,547 @@ class _BookingListPageState extends State<BookingListPage> {
     );
   }
 
-  void _openFilterSheet() {
-    EnhancedSearchSheet.show(
-      context,
-      currentFilters: _activeFilters,
-      onApply: (filters) {
-        setState(() => _activeFilters = filters);
-        context.read<BookingBloc>().add(
-          LoadBookings(
-            search: filters['search'] as String?,
-            status: filters['status'] as String?,
-            refresh: true,
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      child: AnimatedContainer(
+        duration: DesignSystem.durationNormal,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(DesignSystem.radiusMd),
+          border: Border.all(
+            color: _isSearchFocused ? AppColors.primary : AppColors.border,
+            width: _isSearchFocused ? 2 : 1,
           ),
-        );
-      },
-      onClear: () {
-        setState(() => _activeFilters = {});
-        context.read<BookingBloc>().add(const LoadBookings(refresh: true));
-      },
+          boxShadow: _isSearchFocused ? DesignSystem.shadowSm : null,
+        ),
+        child: TextField(
+          controller: _searchController,
+          style: DesignSystem.bodyMedium.copyWith(
+            color: AppColors.textPrimary,
+          ),
+          decoration: InputDecoration(
+            hintText: 'Search by name, number, or type...',
+            hintStyle: DesignSystem.bodyMedium.copyWith(
+              color: AppColors.textHint,
+            ),
+            prefixIcon: Icon(
+              Icons.search_rounded,
+              size: 22,
+              color: _isSearchFocused ? AppColors.primary : AppColors.textTertiary,
+            ),
+            suffixIcon: _searchController.text.isNotEmpty
+                ? IconButton(
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      size: 20,
+                      color: AppColors.textTertiary,
+                    ),
+                    onPressed: () {
+                      _searchController.clear();
+                      context.read<BookingBloc>().add(
+                        const LoadBookings(refresh: true),
+                      );
+                      setState(() {});
+                    },
+                  )
+                : null,
+            filled: true,
+            fillColor: Colors.transparent,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 12,
+            ),
+            border: InputBorder.none,
+            enabledBorder: InputBorder.none,
+            focusedBorder: InputBorder.none,
+          ),
+          textInputAction: TextInputAction.search,
+          onSubmitted: (v) {
+            context.read<BookingBloc>().add(
+              LoadBookings(
+                search: v,
+                status: _statusFilter == 'ALL' ? null : _statusFilter,
+                refresh: true,
+              ),
+            );
+          },
+          onChanged: (_) => setState(() {}),
+          onTap: () => setState(() => _isSearchFocused = true),
+          onEditingComplete: () => setState(() => _isSearchFocused = false),
+        ),
+      ),
     );
   }
 
-  Widget _buildBookingItem(dynamic booking) {
-    final statusColor = _statusColor(booking.status);
+  Widget _buildFilterChips() {
+    return SizedBox(
+      height: 48,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        children: [
+          BookingStatusChip(
+            status: 'ALL',
+            isSelected: _statusFilter == 'ALL',
+            onTap: () => _applyFilter('ALL'),
+          ),
+          const SizedBox(width: 8),
+          BookingStatusChip(
+            status: 'CONFIRMED',
+            isSelected: _statusFilter == 'CONFIRMED',
+            onTap: () => _applyFilter('CONFIRMED'),
+          ),
+          const SizedBox(width: 8),
+          BookingStatusChip(
+            status: 'TENTATIVE',
+            isSelected: _statusFilter == 'TENTATIVE',
+            onTap: () => _applyFilter('TENTATIVE'),
+          ),
+          const SizedBox(width: 8),
+          BookingStatusChip(
+            status: 'IN_PROGRESS',
+            isSelected: _statusFilter == 'IN_PROGRESS',
+            onTap: () => _applyFilter('IN_PROGRESS'),
+          ),
+          const SizedBox(width: 8),
+          BookingStatusChip(
+            status: 'COMPLETED',
+            isSelected: _statusFilter == 'COMPLETED',
+            onTap: () => _applyFilter('COMPLETED'),
+          ),
+          const SizedBox(width: 8),
+          BookingStatusChip(
+            status: 'CANCELLED',
+            isSelected: _statusFilter == 'CANCELLED',
+            onTap: () => _applyFilter('CANCELLED'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _applyFilter(String status) {
+    HapticFeedback.selectionClick();
+    setState(() => _statusFilter = status);
+    context.read<BookingBloc>().add(
+      LoadBookings(
+        status: status == 'ALL' ? null : status,
+        refresh: true,
+      ),
+    );
+  }
+
+  Widget _buildBookingList(BookingsLoaded state) {
+    return RefreshIndicator(
+      color: AppColors.primary,
+      backgroundColor: AppColors.surface,
+      onRefresh: () async {
+        context.read<BookingBloc>().add(
+          const LoadBookings(refresh: true),
+        );
+      },
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide = constraints.maxWidth > 600;
+          return ListView.builder(
+            controller: _scrollController,
+            padding: EdgeInsets.symmetric(
+              horizontal: isWide ? 24 : 16,
+              vertical: 8,
+            ),
+            itemCount: state.bookings.length + (state.hasMore ? 1 : 0),
+            itemBuilder: (context, index) {
+              if (index >= state.bookings.length) {
+                return const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      color: AppColors.primary,
+                      strokeWidth: 2.5,
+                    ),
+                  ),
+                );
+              }
+              final booking = state.bookings[index];
+              return _buildBookingItem(booking, isWide);
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildBookingItem(dynamic booking, bool isWide) {
     final initials = booking.customerName.isNotEmpty
         ? booking.customerName[0].toUpperCase()
         : '?';
-    final authState = context.read<AuthBloc>().state;
-    final isGuest = authState is AuthGuestAuthenticated;
+    final statusInfo = BookingStatusHelper.getInfo(booking.status, Theme.of(context).colorScheme);
 
-    return SwipeActionWrapper(
-      key: ValueKey(booking.id),
-      confirmDelete: !isGuest,
-      onDismissed: isGuest
-          ? null
-          : () {
-              if (booking.status == 'CONFIRMED' ||
-                  booking.status == 'TENTATIVE') {
-                context.read<BookingBloc>().add(
-                  MarkBookingCompleted(id: booking.id),
-                );
-              } else if (booking.status == 'IN_PROGRESS') {
-                context.read<BookingBloc>().add(
-                  MarkBookingCompleted(id: booking.id),
-                );
-              }
-            },
-      confirmDismiss: isGuest
-          ? (_) async {
-              showLoginRequiredSheet(context);
-              return false;
-            }
-          : (_) async {
-              if (booking.status == 'CONFIRMED' ||
-                  booking.status == 'TENTATIVE') {
-                return await showDialog<bool>(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: const Text('Complete Booking'),
-                    content: const Text('Mark this booking as completed?'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx, false),
-                        child: const Text('Cancel'),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(DesignSystem.radiusLg),
+        child: InkWell(
+          onTap: () => context.push('/bookings/${booking.id}'),
+          borderRadius: BorderRadius.circular(DesignSystem.radiusLg),
+          child: Container(
+            padding: EdgeInsets.all(isWide ? 20 : 16),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(DesignSystem.radiusLg),
+              border: Border.all(color: AppColors.borderLight),
+            ),
+            child: Row(
+              children: [
+                _buildAvatar(booking, initials, statusInfo),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        booking.customerName,
+                        style: DesignSystem.bodyLarge.copyWith(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx, true),
-                        child: const Text('Complete'),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.tag_rounded,
+                            size: 12,
+                            color: AppColors.textTertiary,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            booking.bookingNumber,
+                            style: DesignSystem.bodySmall.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Icon(
+                            Icons.category_outlined,
+                            size: 12,
+                            color: AppColors.textTertiary,
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              Formatters.capitalize(booking.eventType),
+                              style: DesignSystem.bodySmall.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.calendar_today_rounded,
+                            size: 12,
+                            color: AppColors.textTertiary,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            booking.eventDate,
+                            style: DesignSystem.labelSmall.copyWith(
+                              color: AppColors.textTertiary,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                );
-              }
-              return false;
-            },
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: AppDimens.sm),
-        child: PremiumCard(
-          margin: EdgeInsets.zero,
-          padding: const EdgeInsets.all(AppDimens.lg),
-          onTap: () => context.push('/bookings/${booking.id}'),
-          child: Row(
-            children: [
-              GradientAvatar(
-                initials: initials,
-                radius: AppDimens.avatarMd / 2,
-                gradient: _avatarGradient(booking.status),
-              ),
-              const SizedBox(width: AppDimens.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      booking.customerName,
-                      style: const TextStyle(
-                        fontSize: AppDimens.fontBase,
-                        fontWeight: FontWeight.w600,
+                      Formatters.currency(booking.totalAmount),
+                      style: DesignSystem.titleMedium.copyWith(
                         color: AppColors.textPrimary,
-                        letterSpacing: -0.2,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: AppDimens.xs),
-                    Text(
-                      '${booking.bookingNumber} · ${Formatters.capitalize(booking.eventType)}',
-                      style: const TextStyle(
-                        fontSize: AppDimens.fontSm,
-                        color: AppColors.textSecondary,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      booking.eventDate,
-                      style: const TextStyle(
-                        fontSize: AppDimens.fontXs,
-                        color: AppColors.textTertiary,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
+                    const SizedBox(height: 4),
+                    BookingStatusBadge(status: booking.status, compact: true),
                   ],
                 ),
-              ),
-              const SizedBox(width: AppDimens.sm),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    Formatters.currency(booking.totalAmount),
-                    style: const TextStyle(
-                      fontSize: AppDimens.fontMd,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                      letterSpacing: -0.2,
-                    ),
-                  ),
-                  const SizedBox(height: AppDimens.xs),
-                  StatusChip(
-                    label: Formatters.statusLabel(booking.status),
-                    color: statusColor,
-                    small: true,
-                  ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildFilterChip(String label, String? status) {
-    final isSelected = _statusFilter == status;
-    return Padding(
-      padding: const EdgeInsets.only(right: AppDimens.sm),
-      child: AnimatedContainer(
-        duration: AppDimens.animNormal,
-        curve: AppDimens.curveDefault,
-        child: FilterChip(
-          label: AnimatedDefaultTextStyle(
-            duration: AppDimens.animNormal,
-            style: TextStyle(
-              fontSize: AppDimens.fontSm,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-              color: isSelected ? Colors.white : AppColors.textSecondary,
+  Widget _buildAvatar(
+    dynamic booking,
+    String initials,
+    BookingStatusInfo statusInfo,
+  ) {
+    return Stack(
+      children: [
+        Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                statusInfo.color,
+                statusInfo.color.withValues(alpha: 0.8),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            child: Text(label),
+            borderRadius: BorderRadius.circular(DesignSystem.radiusMd),
           ),
-          selected: isSelected,
-          selectedColor: AppColors.primary,
-          backgroundColor: AppColors.surface,
-          checkmarkColor: Colors.white,
-          side: BorderSide(
-            color: isSelected ? AppColors.primary : AppColors.borderLight,
-            width: 1.5,
+          child: Center(
+            child: Text(
+              initials,
+              style: DesignSystem.titleMedium.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppDimens.radiusFull),
+        ),
+        Positioned(
+          bottom: -2,
+          right: -2,
+          child: Container(
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              color: statusInfo.backgroundColor,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: AppColors.surface,
+                width: 2,
+              ),
+            ),
+            child: Icon(
+              statusInfo.icon,
+              size: 10,
+              color: statusInfo.color,
+            ),
           ),
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppDimens.sm,
-            vertical: 0,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmptyState() {
+    if (_statusFilter != 'ALL') {
+      final statusInfo = BookingStatusHelper.getInfo(_statusFilter, Theme.of(context).colorScheme);
+      return EventFlowEmptyState(
+        icon: statusInfo.icon,
+        title: 'No ${statusInfo.label.toLowerCase()} bookings',
+        subtitle: 'There are no bookings with this status',
+        actionLabel: 'Clear filter',
+        onAction: () => _applyFilter('ALL'),
+      );
+    }
+    if (_searchController.text.isNotEmpty) {
+      return EventFlowEmptyState(
+        icon: Icons.search_off_rounded,
+        title: 'No results found',
+        subtitle: 'Try adjusting your search terms',
+        actionLabel: 'Clear search',
+        onAction: () {
+          _searchController.clear();
+          context.read<BookingBloc>().add(const LoadBookings(refresh: true));
+        },
+      );
+    }
+    return EventFlowEmptyState(
+      icon: Icons.calendar_today_rounded,
+      title: 'No bookings yet',
+      subtitle: 'Create your first booking to get started',
+      actionLabel: 'Create booking',
+      onAction: () {
+        if (_isGuest) {
+          _showLoginRequired(context);
+        } else {
+          context.push('/bookings/new');
+        }
+      },
+    );
+  }
+
+  Widget _buildSkeleton() {
+    return Shimmer.fromColors(
+      baseColor: AppColors.ivory,
+      highlightColor: AppColors.surface,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: 6,
+        itemBuilder: (context, index) => Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(DesignSystem.radiusLg),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(DesignSystem.radiusMd),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        height: 14,
+                        width: 140,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        height: 12,
+                        width: 100,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        height: 12,
+                        width: 80,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Container(
+                      height: 16,
+                      width: 80,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      height: 24,
+                      width: 70,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-          onSelected: (selected) {
-            setState(() => _statusFilter = selected ? status : null);
-            context.read<BookingBloc>().add(
-              LoadBookings(status: _statusFilter, refresh: true),
-            );
-          },
+        ),
+      ),
+    );
+  }
+
+  void _showLoginRequired(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(DesignSystem.radiusXl),
+        ),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.divider,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              width: 64,
+              height: 64,
+              decoration: const BoxDecoration(
+                color: AppColors.primarySurface,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.lock_outline_rounded,
+                size: 32,
+                color: AppColors.primary,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Sign in required',
+              style: DesignSystem.titleLarge.copyWith(
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Sign in to create and manage bookings',
+              style: DesignSystem.bodyMedium.copyWith(
+                color: AppColors.textSecondary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  context.push('/login');
+                },
+                icon: const Icon(Icons.login_rounded, size: 18),
+                label: const Text('Sign in'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(DesignSystem.radiusMd),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
         ),
       ),
     );

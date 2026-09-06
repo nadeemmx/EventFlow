@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:eventflow_app/core/services/token_service.dart';
-import 'package:eventflow_app/core/services/guest_session_service.dart';
+import 'package:eventflow_app/core/theme/page_transitions.dart';
 import 'package:eventflow_app/core/widgets/main_shell.dart';
-import 'package:eventflow_app/injector.dart';
 import 'package:eventflow_app/features/authentication/presentation/pages/splash_page.dart';
+import 'package:eventflow_app/features/authentication/presentation/pages/onboarding_page.dart';
 import 'package:eventflow_app/features/authentication/presentation/pages/login_page.dart';
+import 'package:eventflow_app/features/authentication/presentation/pages/signup_page.dart';
 import 'package:eventflow_app/features/authentication/presentation/pages/forgot_password_page.dart';
 import 'package:eventflow_app/features/authentication/presentation/pages/reset_password_page.dart';
+import 'package:eventflow_app/features/demo/presentation/pages/guest_demo_page.dart';
 import 'package:eventflow_app/features/dashboard/presentation/pages/dashboard_page.dart';
 import 'package:eventflow_app/features/bookings/presentation/pages/booking_list_page.dart';
 import 'package:eventflow_app/features/bookings/presentation/pages/booking_detail_page.dart';
@@ -29,30 +31,68 @@ import 'package:eventflow_app/features/notifications/presentation/pages/notifica
 
 class AppRouter {
   final TokenService _tokenService;
+  final ValueNotifier<void> authNotifier = ValueNotifier<void>(null);
   late final GoRouter router;
 
   AppRouter({required this._tokenService}) {
     router = GoRouter(
       initialLocation: '/splash',
       debugLogDiagnostics: false,
+      refreshListenable: authNotifier,
       redirect: _guardRoute,
       routes: [
+        // ─── Auth routes (outside shell) ────────────────────────────
         GoRoute(
           path: '/splash',
-          builder: (context, state) => const SplashPage(),
+          pageBuilder: (context, state) => CustomTransitionPage(
+            child: const SplashPage(),
+            transitionsBuilder: PageTransitions.fadeThrough,
+          ),
+        ),
+        GoRoute(
+          path: '/onboarding',
+          pageBuilder: (context, state) => CustomTransitionPage(
+            child: const OnboardingPage(),
+            transitionsBuilder: PageTransitions.fadeThrough,
+          ),
         ),
         GoRoute(
           path: '/login',
-          builder: (context, state) => const LoginPage(),
+          pageBuilder: (context, state) => CustomTransitionPage(
+            child: const LoginPage(),
+            transitionsBuilder: PageTransitions.fadeThrough,
+          ),
+        ),
+        GoRoute(
+          path: '/signup',
+          pageBuilder: (context, state) => CustomTransitionPage(
+            child: const SignupPage(),
+            transitionsBuilder: PageTransitions.slideFromRight,
+          ),
+        ),
+        GoRoute(
+          path: '/demo',
+          pageBuilder: (context, state) => CustomTransitionPage(
+            child: const GuestDemoPage(),
+            transitionsBuilder: PageTransitions.fadeThrough,
+          ),
         ),
         GoRoute(
           path: '/forgot-password',
-          builder: (context, state) => const ForgotPasswordPage(),
+          pageBuilder: (context, state) => CustomTransitionPage(
+            child: const ForgotPasswordPage(),
+            transitionsBuilder: PageTransitions.slideFromBottom,
+          ),
         ),
         GoRoute(
           path: '/reset-password',
-          builder: (context, state) => const ResetPasswordPage(),
+          pageBuilder: (context, state) => CustomTransitionPage(
+            child: const ResetPasswordPage(),
+            transitionsBuilder: PageTransitions.slideFromBottom,
+          ),
         ),
+
+        // ─── Shell route (bottom nav tabs) ──────────────────────────
         ShellRoute(
           builder: (context, state, child) => MainShell(child: child),
           routes: [
@@ -60,92 +100,46 @@ class AppRouter {
               path: '/dashboard',
               pageBuilder: (context, state) => CustomTransitionPage(
                 child: const DashboardPage(),
-                transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                  return FadeTransition(
-                    opacity: animation,
-                    child: SlideTransition(
-                      position: Tween<Offset>(
-                        begin: const Offset(0, 0.02),
-                        end: Offset.zero,
-                      ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
-                      child: child,
-                    ),
-                  );
-                },
+                transitionsBuilder: PageTransitions.fadeThrough,
               ),
             ),
             GoRoute(
               path: '/bookings',
               pageBuilder: (context, state) => CustomTransitionPage(
                 child: const BookingListPage(),
-                transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                  return SlideTransition(
-                    position: Tween<Offset>(
-                      begin: const Offset(1.0, 0.0),
-                      end: Offset.zero,
-                    ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
-                    child: FadeTransition(
-                      opacity: CurvedAnimation(parent: animation, curve: const Interval(0.3, 1.0, curve: Curves.easeOut)),
-                      child: child,
-                    ),
-                  );
-                },
+                transitionsBuilder: PageTransitions.sharedAxisHorizontal,
               ),
             ),
             GoRoute(
               path: '/customers',
               pageBuilder: (context, state) => CustomTransitionPage(
                 child: const CustomerListPage(),
-                transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                  return SlideTransition(
-                    position: Tween<Offset>(
-                      begin: const Offset(1.0, 0.0),
-                      end: Offset.zero,
-                    ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
-                    child: FadeTransition(
-                      opacity: CurvedAnimation(parent: animation, curve: const Interval(0.3, 1.0, curve: Curves.easeOut)),
-                      child: child,
-                    ),
-                  );
-                },
+                transitionsBuilder: PageTransitions.sharedAxisHorizontal,
               ),
             ),
             GoRoute(
               path: '/leads',
               pageBuilder: (context, state) => CustomTransitionPage(
                 child: const LeadListPage(),
-                transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                  return SlideTransition(
-                    position: Tween<Offset>(
-                      begin: const Offset(1.0, 0.0),
-                      end: Offset.zero,
-                    ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
-                    child: FadeTransition(
-                      opacity: CurvedAnimation(parent: animation, curve: const Interval(0.3, 1.0, curve: Curves.easeOut)),
-                      child: child,
-                    ),
-                  );
-                },
+                transitionsBuilder: PageTransitions.sharedAxisHorizontal,
               ),
             ),
             GoRoute(
               path: '/more',
-              builder: (context, state) => const _MorePage(),
+              pageBuilder: (context, state) => CustomTransitionPage(
+                child: const MorePage(),
+                transitionsBuilder: PageTransitions.sharedAxisHorizontal,
+              ),
             ),
           ],
         ),
+
+        // ─── Detail/form routes (outside shell, full-screen) ────────
         GoRoute(
           path: '/bookings/new',
           pageBuilder: (context, state) => CustomTransitionPage(
             child: const BookingFormPage(),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              const begin = Offset(0.0, 1.0);
-              const end = Offset.zero;
-              final tween = Tween<Offset>(begin: begin, end: end).animate(
-                CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-              );
-              return SlideTransition(position: tween, child: child);
-            },
+            transitionsBuilder: PageTransitions.slideFromBottom,
           ),
         ),
         GoRoute(
@@ -154,18 +148,7 @@ class AppRouter {
             child: BookingDetailPage(
               id: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
             ),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              return SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(1.0, 0.0),
-                  end: Offset.zero,
-                ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
-                child: FadeTransition(
-                  opacity: CurvedAnimation(parent: animation, curve: const Interval(0.3, 1.0, curve: Curves.easeOut)),
-                  child: child,
-                ),
-              );
-            },
+            transitionsBuilder: PageTransitions.slideFromRight,
           ),
         ),
         GoRoute(
@@ -174,28 +157,14 @@ class AppRouter {
             child: BookingFormPage(
               id: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
             ),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              const begin = Offset(0.0, 1.0);
-              const end = Offset.zero;
-              final tween = Tween<Offset>(begin: begin, end: end).animate(
-                CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-              );
-              return SlideTransition(position: tween, child: child);
-            },
+            transitionsBuilder: PageTransitions.slideFromBottom,
           ),
         ),
         GoRoute(
           path: '/customers/new',
           pageBuilder: (context, state) => CustomTransitionPage(
             child: const CustomerFormPage(),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              const begin = Offset(0.0, 1.0);
-              const end = Offset.zero;
-              final tween = Tween<Offset>(begin: begin, end: end).animate(
-                CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-              );
-              return SlideTransition(position: tween, child: child);
-            },
+            transitionsBuilder: PageTransitions.slideFromBottom,
           ),
         ),
         GoRoute(
@@ -204,18 +173,7 @@ class AppRouter {
             child: CustomerDetailPage(
               id: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
             ),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              return SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(1.0, 0.0),
-                  end: Offset.zero,
-                ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
-                child: FadeTransition(
-                  opacity: CurvedAnimation(parent: animation, curve: const Interval(0.3, 1.0, curve: Curves.easeOut)),
-                  child: child,
-                ),
-              );
-            },
+            transitionsBuilder: PageTransitions.slideFromRight,
           ),
         ),
         GoRoute(
@@ -224,28 +182,14 @@ class AppRouter {
             child: CustomerFormPage(
               id: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
             ),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              const begin = Offset(0.0, 1.0);
-              const end = Offset.zero;
-              final tween = Tween<Offset>(begin: begin, end: end).animate(
-                CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-              );
-              return SlideTransition(position: tween, child: child);
-            },
+            transitionsBuilder: PageTransitions.slideFromBottom,
           ),
         ),
         GoRoute(
           path: '/leads/new',
           pageBuilder: (context, state) => CustomTransitionPage(
             child: const LeadFormPage(),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              const begin = Offset(0.0, 1.0);
-              const end = Offset.zero;
-              final tween = Tween<Offset>(begin: begin, end: end).animate(
-                CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-              );
-              return SlideTransition(position: tween, child: child);
-            },
+            transitionsBuilder: PageTransitions.slideFromBottom,
           ),
         ),
         GoRoute(
@@ -254,18 +198,7 @@ class AppRouter {
             child: LeadDetailPage(
               id: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
             ),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              return SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(1.0, 0.0),
-                  end: Offset.zero,
-                ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
-                child: FadeTransition(
-                  opacity: CurvedAnimation(parent: animation, curve: const Interval(0.3, 1.0, curve: Curves.easeOut)),
-                  child: child,
-                ),
-              );
-            },
+            transitionsBuilder: PageTransitions.slideFromRight,
           ),
         ),
         GoRoute(
@@ -274,51 +207,70 @@ class AppRouter {
             child: LeadFormPage(
               id: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
             ),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              const begin = Offset(0.0, 1.0);
-              const end = Offset.zero;
-              final tween = Tween<Offset>(begin: begin, end: end).animate(
-                CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-              );
-              return SlideTransition(position: tween, child: child);
-            },
+            transitionsBuilder: PageTransitions.slideFromBottom,
+          ),
+        ),
+
+        // ─── Sub-feature routes (outside shell) ─────────────────────
+        GoRoute(
+          path: '/venues',
+          pageBuilder: (context, state) => CustomTransitionPage(
+            child: const VenueListPage(),
+            transitionsBuilder: PageTransitions.slideFromRight,
           ),
         ),
         GoRoute(
-          path: '/venues',
-          builder: (context, state) => const VenueListPage(),
-        ),
-        GoRoute(
           path: '/venues/:id',
-          builder: (context, state) => VenueDetailPage(
-            id: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+          pageBuilder: (context, state) => CustomTransitionPage(
+            child: VenueDetailPage(
+              id: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+            ),
+            transitionsBuilder: PageTransitions.slideFromRight,
           ),
         ),
         GoRoute(
           path: '/payments',
-          builder: (context, state) => const PaymentListPage(),
+          pageBuilder: (context, state) => CustomTransitionPage(
+            child: const PaymentListPage(),
+            transitionsBuilder: PageTransitions.slideFromRight,
+          ),
         ),
         GoRoute(
           path: '/invoices',
-          builder: (context, state) => const InvoiceListPage(),
+          pageBuilder: (context, state) => CustomTransitionPage(
+            child: const InvoiceListPage(),
+            transitionsBuilder: PageTransitions.slideFromRight,
+          ),
         ),
         GoRoute(
           path: '/invoices/:id',
-          builder: (context, state) => InvoiceDetailPage(
-            id: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+          pageBuilder: (context, state) => CustomTransitionPage(
+            child: InvoiceDetailPage(
+              id: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+            ),
+            transitionsBuilder: PageTransitions.slideFromRight,
           ),
         ),
         GoRoute(
           path: '/notifications',
-          builder: (context, state) => const NotificationListPage(),
+          pageBuilder: (context, state) => CustomTransitionPage(
+            child: const NotificationListPage(),
+            transitionsBuilder: PageTransitions.slideFromRight,
+          ),
         ),
         GoRoute(
           path: '/settings',
-          builder: (context, state) => const SettingsPage(),
+          pageBuilder: (context, state) => CustomTransitionPage(
+            child: const SettingsPage(),
+            transitionsBuilder: PageTransitions.slideFromRight,
+          ),
         ),
         GoRoute(
           path: '/profile',
-          builder: (context, state) => const ProfilePage(),
+          pageBuilder: (context, state) => CustomTransitionPage(
+            child: const ProfilePage(),
+            transitionsBuilder: PageTransitions.slideFromRight,
+          ),
         ),
       ],
     );
@@ -326,20 +278,18 @@ class AppRouter {
 
   Future<String?> _guardRoute(BuildContext context, GoRouterState state) async {
     final isLoggedIn = await _tokenService.isLoggedIn();
-    final isGuest = sl<GuestSessionService>().isGuestSession();
-    final isAuthRoute = state.matchedLocation == '/login' ||
-        state.matchedLocation == '/forgot-password' ||
-        state.matchedLocation == '/reset-password' ||
-        state.matchedLocation == '/splash';
+    final location = state.matchedLocation;
 
-    if (isAuthRoute) {
-      if (isLoggedIn || isGuest) {
-        return state.matchedLocation == '/splash' ? null : '/dashboard';
+    const authRoutes = ['/login', '/signup', '/demo', '/forgot-password', '/reset-password', '/splash', '/onboarding'];
+
+    if (authRoutes.contains(location)) {
+      if (isLoggedIn) {
+        return location == '/splash' ? null : '/dashboard';
       }
       return null;
     }
 
-    if (!isLoggedIn && !isGuest) {
+    if (!isLoggedIn) {
       return '/login';
     }
 
@@ -347,13 +297,18 @@ class AppRouter {
   }
 }
 
-class _MorePage extends StatelessWidget {
-  const _MorePage();
+class MorePage extends StatelessWidget {
+  const MorePage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('More')),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppBar(
+        title: const Text('More'),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        surfaceTintColor: Colors.transparent,
+      ),
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 8),
         children: [
@@ -408,8 +363,14 @@ class _MoreItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       leading: Icon(icon, color: Theme.of(context).colorScheme.primary),
-      title: Text(title),
-      trailing: const Icon(Icons.chevron_right_rounded, color: Colors.grey),
+      title: Text(
+        title,
+        style: Theme.of(context).textTheme.bodyLarge,
+      ),
+      trailing: Icon(
+        Icons.chevron_right_rounded,
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+      ),
       onTap: onTap,
     );
   }

@@ -3,25 +3,13 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:eventflow_app/core/theme/app_colors.dart';
 import 'package:eventflow_app/core/theme/app_dimens.dart';
+import 'package:eventflow_app/core/theme/design_system.dart';
 
 class AppTheme {
   AppTheme._();
 
   static ThemeData get dark {
-    final colorScheme = ColorScheme.dark(
-      primary: AppColors.primary,
-      secondary: AppColors.secondary,
-      tertiary: AppColors.accent,
-      surface: AppColors.surfaceDark,
-      error: AppColors.error,
-      onPrimary: AppColors.textOnPrimary,
-      onSecondary: AppColors.textOnPrimary,
-      onTertiary: AppColors.textOnPrimary,
-      onSurface: AppColors.textPrimaryDark,
-      outline: AppColors.dividerDark,
-      outlineVariant: AppColors.borderDark,
-      shadow: Colors.black26,
-    );
+    final colorScheme = DesignSystem.dark;
 
     final textTheme = GoogleFonts.interTextTheme(ThemeData.dark().textTheme).copyWith(
       displayLarge: GoogleFonts.inter(
@@ -163,12 +151,14 @@ class AppTheme {
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppDimens.radiusMd),
           ),
-          backgroundColor: AppColors.primary,
-          foregroundColor: AppColors.textOnPrimary,
+          backgroundColor: colorScheme.primary,
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: colorScheme.onSurface.withValues(alpha: 0.12),
+          disabledForegroundColor: colorScheme.onSurface.withValues(alpha: 0.38),
           textStyle: GoogleFonts.inter(
             fontSize: 15,
             fontWeight: FontWeight.w600,
@@ -179,7 +169,7 @@ class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppDimens.radiusMd),
           ),
@@ -336,6 +326,52 @@ class AppTheme {
           fontWeight: FontWeight.w500,
         ),
       ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: colorScheme.surface,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        indicatorColor: colorScheme.primaryContainer,
+        height: 80,
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          final isSelected = states.contains(WidgetState.selected);
+          return GoogleFonts.inter(
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+            color: isSelected ? colorScheme.primary : colorScheme.onSurfaceVariant,
+          );
+        }),
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          final isSelected = states.contains(WidgetState.selected);
+          return IconThemeData(
+            size: 24,
+            color: isSelected ? colorScheme.primary : colorScheme.onSurfaceVariant,
+          );
+        }),
+      ),
+      navigationRailTheme: NavigationRailThemeData(
+        backgroundColor: colorScheme.surface,
+        elevation: 0,
+        indicatorColor: colorScheme.primaryContainer,
+        unselectedIconTheme: IconThemeData(
+          size: 24,
+          color: colorScheme.onSurfaceVariant,
+        ),
+        selectedIconTheme: IconThemeData(
+          size: 24,
+          color: colorScheme.primary,
+        ),
+        unselectedLabelTextStyle: GoogleFonts.inter(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: colorScheme.onSurfaceVariant,
+        ),
+        selectedLabelTextStyle: GoogleFonts.inter(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: colorScheme.primary,
+        ),
+      ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
@@ -381,20 +417,7 @@ class AppTheme {
   }
 
   static ThemeData get light {
-    final colorScheme = ColorScheme.light(
-      primary: AppColors.primary,
-      secondary: AppColors.secondary,
-      tertiary: AppColors.accent,
-      surface: AppColors.surface,
-      error: AppColors.error,
-      onPrimary: AppColors.textOnPrimary,
-      onSecondary: AppColors.textOnPrimary,
-      onTertiary: AppColors.textOnPrimary,
-      onSurface: AppColors.textPrimary,
-      outline: AppColors.divider,
-      outlineVariant: AppColors.borderLight,
-      shadow: Colors.black12,
-    );
+    final colorScheme = DesignSystem.light;
 
     final textTheme = GoogleFonts.interTextTheme().copyWith(
       displayLarge: GoogleFonts.inter(
@@ -505,7 +528,7 @@ class AppTheme {
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
-        backgroundColor: AppColors.surface,
+        backgroundColor: AppColors.background,
         foregroundColor: AppColors.textPrimary,
         surfaceTintColor: Colors.transparent,
         systemOverlayStyle: const SystemUiOverlayStyle(
@@ -536,12 +559,14 @@ class AppTheme {
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppDimens.radiusMd),
           ),
           backgroundColor: AppColors.primary,
-          foregroundColor: AppColors.textOnPrimary,
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: AppColors.textPrimary.withValues(alpha: 0.12),
+          disabledForegroundColor: AppColors.textPrimary.withValues(alpha: 0.38),
           textStyle: GoogleFonts.inter(
             fontSize: 15,
             fontWeight: FontWeight.w600,
@@ -552,7 +577,7 @@ class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppDimens.radiusMd),
           ),
@@ -580,14 +605,14 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.background,
+        fillColor: AppColors.ivory,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppDimens.radiusMd),
-          borderSide: const BorderSide(color: AppColors.divider),
+          borderSide: const BorderSide(color: AppColors.border),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppDimens.radiusMd),
-          borderSide: const BorderSide(color: AppColors.divider),
+          borderSide: const BorderSide(color: AppColors.border),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppDimens.radiusMd),
@@ -634,7 +659,7 @@ class AppTheme {
           fontSize: 13,
           fontWeight: FontWeight.w500,
         ),
-        side: const BorderSide(color: AppColors.divider),
+        side: const BorderSide(color: AppColors.border),
         showCheckmark: false,
       ),
       dialogTheme: DialogThemeData(
@@ -707,6 +732,52 @@ class AppTheme {
         unselectedLabelStyle: GoogleFonts.inter(
           fontSize: 11,
           fontWeight: FontWeight.w500,
+        ),
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: colorScheme.surface,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        indicatorColor: colorScheme.primaryContainer,
+        height: 80,
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          final isSelected = states.contains(WidgetState.selected);
+          return GoogleFonts.inter(
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+            color: isSelected ? colorScheme.primary : colorScheme.onSurfaceVariant,
+          );
+        }),
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          final isSelected = states.contains(WidgetState.selected);
+          return IconThemeData(
+            size: 24,
+            color: isSelected ? colorScheme.primary : colorScheme.onSurfaceVariant,
+          );
+        }),
+      ),
+      navigationRailTheme: NavigationRailThemeData(
+        backgroundColor: colorScheme.surface,
+        elevation: 0,
+        indicatorColor: colorScheme.primaryContainer,
+        unselectedIconTheme: IconThemeData(
+          size: 24,
+          color: colorScheme.onSurfaceVariant,
+        ),
+        selectedIconTheme: IconThemeData(
+          size: 24,
+          color: colorScheme.primary,
+        ),
+        unselectedLabelTextStyle: GoogleFonts.inter(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: colorScheme.onSurfaceVariant,
+        ),
+        selectedLabelTextStyle: GoogleFonts.inter(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: colorScheme.primary,
         ),
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(

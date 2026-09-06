@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:eventflow_app/core/theme/app_colors.dart';
-import 'package:eventflow_app/core/theme/app_dimens.dart';
+import 'package:eventflow_app/injector.dart';
+import 'package:eventflow_app/core/theme/design_system.dart';
+import 'package:eventflow_app/core/storage/storage_service.dart';
 import 'package:eventflow_app/features/authentication/presentation/bloc/auth_bloc.dart';
 
 class SplashPage extends StatefulWidget {
@@ -12,10 +13,12 @@ class SplashPage extends StatefulWidget {
   State<SplashPage> createState() => _SplashPageState();
 }
 
-class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateMixin {
+class _SplashPageState extends State<SplashPage>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-  late Animation<double> _fadeAnimation;
+  late Animation<double> _logoScale;
+  late Animation<double> _logoFade;
+  late Animation<double> _textFade;
   late Animation<double> _loadingFade;
 
   @override
@@ -23,19 +26,35 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1400),
+      duration: const Duration(milliseconds: 1800),
     );
 
-    _scaleAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: const Interval(0.0, 0.6, curve: Curves.elasticOut)),
+    _logoScale = Tween<double>(begin: 0.6, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.0, 0.5, curve: Curves.easeOutCubic),
+      ),
     );
 
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: const Interval(0.0, 0.5, curve: Curves.easeOut)),
+    _logoFade = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.0, 0.4, curve: Curves.easeOut),
+      ),
+    );
+
+    _textFade = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.2, 0.6, curve: Curves.easeOut),
+      ),
     );
 
     _loadingFade = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: const Interval(0.5, 0.8, curve: Curves.easeIn)),
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.5, 0.8, curve: Curves.easeIn),
+      ),
     );
 
     _controller.forward();
@@ -55,11 +74,25 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
         if (state is AuthAuthenticated || state is AuthGuestAuthenticated) {
           context.go('/dashboard');
         } else if (state is AuthUnauthenticated) {
-          context.go('/login');
+          final onboardingCompleted = sl<StorageService>().isOnboardingCompleted();
+          if (onboardingCompleted) {
+            context.go('/login');
+          } else {
+            context.go('/onboarding');
+          }
         }
       },
       child: Container(
-        decoration: const BoxDecoration(gradient: AppColors.primaryGradient),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFFD4A843),
+              Color(0xFFE8C96A),
+            ],
+          ),
+        ),
         child: Scaffold(
           backgroundColor: Colors.transparent,
           body: SafeArea(
@@ -69,62 +102,67 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
                 children: [
                   const Spacer(flex: 3),
                   FadeTransition(
-                    opacity: _fadeAnimation,
+                    opacity: _logoFade,
                     child: ScaleTransition(
-                      scale: _scaleAnimation,
-                      child: Hero(
-                        tag: 'auth_logo',
-                        child: Container(
-                          width: 120,
-                          height: 120,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(AppDimens.radiusXxl),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.25),
-                              width: 1.5,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.15),
-                                blurRadius: 40,
-                                offset: const Offset(0, 16),
-                              ),
-                            ],
+                      scale: _logoScale,
+                      child: Container(
+                        width: 140,
+                        height: 140,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(DesignSystem.radiusXxl),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.3),
+                            width: 1.5,
                           ),
-                          child: const Icon(
-                            Icons.event_available_rounded,
-                            size: 56,
-                            color: Colors.white,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.15),
+                              blurRadius: 40,
+                              offset: const Offset(0, 16),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(DesignSystem.radiusXxl),
+                          child: Image.asset(
+                            'assets/images/logo.png',
+                            width: 100,
+                            height: 100,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Icon(
+                                Icons.event_available_rounded,
+                                size: 60,
+                                color: Colors.white,
+                              );
+                            },
                           ),
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: AppDimens.xxxl),
+                  const SizedBox(height: DesignSystem.spacing8),
                   FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: const Text(
+                    opacity: _textFade,
+                    child: Text(
                       'EventFlow',
-                      style: TextStyle(
+                      style: DesignSystem.headlineLarge.copyWith(
                         fontSize: 36,
                         fontWeight: FontWeight.w800,
                         color: Colors.white,
                         letterSpacing: -0.5,
-                        height: 1.1,
                       ),
                     ),
                   ),
-                  const SizedBox(height: AppDimens.sm),
+                  const SizedBox(height: DesignSystem.spacing2),
                   FadeTransition(
-                    opacity: _fadeAnimation,
+                    opacity: _textFade,
                     child: Text(
-                      'Event Management Simplified',
-                      style: TextStyle(
-                        fontSize: AppDimens.fontBase,
-                        color: Colors.white.withValues(alpha: 0.7),
-                        fontWeight: FontWeight.w400,
-                        letterSpacing: 0.3,
+                      'Premium Event Management',
+                      style: DesignSystem.bodyLarge.copyWith(
+                        color: Colors.white.withValues(alpha: 0.8),
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
@@ -134,27 +172,24 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
                     child: Column(
                       children: [
                         SizedBox(
-                          width: 28,
-                          height: 28,
+                          width: 24,
+                          height: 24,
                           child: CircularProgressIndicator(
                             strokeWidth: 2.5,
                             color: Colors.white.withValues(alpha: 0.8),
                           ),
                         ),
-                        const SizedBox(height: AppDimens.lg),
+                        const SizedBox(height: DesignSystem.spacing4),
                         Text(
                           'Loading...',
-                          style: TextStyle(
-                            fontSize: AppDimens.fontSm,
-                            color: Colors.white.withValues(alpha: 0.5),
-                            fontWeight: FontWeight.w500,
-                            letterSpacing: 1.2,
+                          style: DesignSystem.labelMedium.copyWith(
+                            color: Colors.white.withValues(alpha: 0.6),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: AppDimens.huge),
+                  const SizedBox(height: DesignSystem.spacing10),
                 ],
               ),
             ),

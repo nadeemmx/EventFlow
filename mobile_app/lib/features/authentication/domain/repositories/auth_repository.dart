@@ -23,6 +23,25 @@ class AuthRepository {
     return loginResponse;
   }
 
+  Future<LoginResponseModel> register({
+    required String fullName,
+    required String email,
+    required String password,
+    required String confirmPassword,
+    String? mobile,
+  }) async {
+    final loginResponse = await _remoteDataSource.register(
+      fullName: fullName,
+      email: email,
+      password: password,
+      confirmPassword: confirmPassword,
+      mobile: mobile,
+    );
+    await _tokenService.saveAccessToken(loginResponse.accessToken);
+    await _tokenService.saveRefreshToken(loginResponse.refreshToken);
+    return loginResponse;
+  }
+
   Future<void> forgotPassword(String email) async {
     await _remoteDataSource.forgotPassword(email);
   }

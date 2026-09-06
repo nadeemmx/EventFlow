@@ -62,4 +62,15 @@ class StorageService {
       await _box.delete(key);
     }
   }
+
+  // ─── Onboarding ────────────────────────────────────────────────────
+  static const String _onboardingKey = 'onboarding_completed';
+
+  bool isOnboardingCompleted() {
+    return _box.get(_onboardingKey) == true;
+  }
+
+  Future<void> setOnboardingCompleted() async {
+    await _box.put(_onboardingKey, true);
+  }
 }

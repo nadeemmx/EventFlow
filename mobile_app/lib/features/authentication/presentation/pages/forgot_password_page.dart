@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:eventflow_app/core/theme/app_colors.dart';
-import 'package:eventflow_app/core/theme/app_dimens.dart';
+import 'package:eventflow_app/core/theme/design_system.dart';
 import 'package:eventflow_app/core/utils/validators.dart';
 import 'package:eventflow_app/features/authentication/presentation/bloc/auth_bloc.dart';
+import 'package:eventflow_app/features/authentication/presentation/widgets/auth_text_field.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -16,10 +16,12 @@ class ForgotPasswordPage extends StatefulWidget {
 class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
+  final _emailFocus = FocusNode();
 
   @override
   void dispose() {
     _emailController.dispose();
+    _emailFocus.dispose();
     super.dispose();
   }
 
@@ -33,162 +35,143 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
         if (state is AuthPasswordResetSent) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Password reset link sent to your email'),
-              backgroundColor: AppColors.success,
+            SnackBar(
+              content: const Text('Password reset link sent to your email'),
+              backgroundColor: DesignSystem.success,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(DesignSystem.radiusMd),
+              ),
             ),
           );
           context.pop();
         } else if (state is AuthError) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.message), backgroundColor: AppColors.error),
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: colorScheme.error,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(DesignSystem.radiusMd),
+              ),
+            ),
           );
         }
       },
       child: Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: colorScheme.surface,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
+          surfaceTintColor: Colors.transparent,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+            icon: Icon(
+              Icons.arrow_back_rounded,
+              color: colorScheme.onSurface,
+            ),
             onPressed: () => context.pop(),
           ),
         ),
         body: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: AppDimens.xxl),
+            padding: const EdgeInsets.symmetric(horizontal: DesignSystem.spacing6),
             child: Form(
               key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: AppDimens.xl),
+                  const SizedBox(height: DesignSystem.spacing4),
                   Center(
                     child: Container(
                       width: 80,
                       height: 80,
                       decoration: BoxDecoration(
-                        color: AppColors.primarySurface,
-                        borderRadius: BorderRadius.circular(AppDimens.radiusXxl),
+                        color: colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(DesignSystem.radiusXl),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.lock_reset_rounded,
                         size: 40,
-                        color: AppColors.primary,
+                        color: colorScheme.primary,
                       ),
                     ),
                   ),
-                  const SizedBox(height: AppDimens.xxxl),
+                  const SizedBox(height: DesignSystem.spacing8),
                   Text(
                     'Forgot password?',
-                    style: TextStyle(
-                      fontSize: AppDimens.fontXxl,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
-                      letterSpacing: -0.5,
-                      height: 1.2,
+                    style: DesignSystem.headlineMedium.copyWith(
+                      color: colorScheme.onSurface,
+                      fontWeight: FontWeight.w700,
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: AppDimens.sm),
+                  const SizedBox(height: DesignSystem.spacing2),
                   Text(
                     "No worries, we'll send you reset instructions",
-                    style: TextStyle(
-                      fontSize: AppDimens.fontMd,
-                      color: AppColors.textSecondary,
-                      height: 1.5,
+                    style: DesignSystem.bodyMedium.copyWith(
+                      color: colorScheme.onSurfaceVariant,
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: AppDimens.huge + AppDimens.lg),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(AppDimens.radiusMd),
-                    child: TextFormField(
-                      controller: _emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      style: const TextStyle(
-                        fontSize: AppDimens.fontBase,
-                        color: AppColors.textPrimary,
-                      ),
-                      decoration: InputDecoration(
-                        hintText: 'Email address',
-                        hintStyle: const TextStyle(color: AppColors.textHint),
-                        prefixIcon: const Icon(Icons.email_outlined, color: AppColors.textTertiary, size: AppDimens.iconMd),
-                        filled: true,
-                        fillColor: AppColors.surface,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: AppDimens.xl,
-                          vertical: AppDimens.lg,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppDimens.radiusMd),
-                          borderSide: const BorderSide(color: AppColors.border),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppDimens.radiusMd),
-                          borderSide: const BorderSide(color: AppColors.border),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppDimens.radiusMd),
-                          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
-                        ),
-                        errorBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppDimens.radiusMd),
-                          borderSide: const BorderSide(color: AppColors.error),
-                        ),
-                        focusedErrorBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppDimens.radiusMd),
-                          borderSide: const BorderSide(color: AppColors.error, width: 1.5),
-                        ),
-                      ),
-                      validator: Validators.email,
-                    ),
+                  const SizedBox(height: DesignSystem.spacing10),
+                  AuthTextField(
+                    controller: _emailController,
+                    focusNode: _emailFocus,
+                    hint: 'Email address',
+                    prefixIcon: Icons.email_outlined,
+                    keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.done,
+                    onEditingComplete: _onSubmit,
+                    validator: Validators.email,
                   ),
-                  const SizedBox(height: AppDimens.xxl),
+                  const SizedBox(height: DesignSystem.spacing6),
                   BlocBuilder<AuthBloc, AuthState>(
                     builder: (context, state) {
-                      return AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        height: AppDimens.buttonHeight,
-                        decoration: BoxDecoration(
-                          gradient: state is AuthLoading ? null : AppColors.primaryGradient,
-                          color: state is AuthLoading ? AppColors.textHint : null,
-                          borderRadius: BorderRadius.circular(AppDimens.radiusMd),
-                          boxShadow: state is AuthLoading ? [] : AppColors.softShadow,
-                        ),
-                        child: ElevatedButton(
-                          onPressed: state is AuthLoading ? null : _onSubmit,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            shadowColor: Colors.transparent,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(AppDimens.radiusMd),
-                            ),
-                            elevation: 0,
+                      final isLoading = state is AuthLoading;
+                      return FilledButton(
+                        onPressed: isLoading ? null : _onSubmit,
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 56),
+                          backgroundColor: colorScheme.primary,
+                          foregroundColor: colorScheme.onPrimary,
+                          disabledBackgroundColor: colorScheme.onSurface.withValues(alpha: 0.12),
+                          disabledForegroundColor: colorScheme.onSurface.withValues(alpha: 0.38),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(DesignSystem.radiusMd),
                           ),
-                          child: state is AuthLoading
-                              ? const SizedBox(
-                                  height: 22,
-                                  width: 22,
-                                  child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
-                                )
-                              : const Text(
-                                  'Send Reset Link',
-                                  style: TextStyle(
-                                    fontSize: AppDimens.fontBase,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.white,
-                                    letterSpacing: 0.3,
-                                  ),
-                                ),
+                          textStyle: DesignSystem.titleMedium.copyWith(
+                            color: colorScheme.onPrimary,
+                          ),
                         ),
+                        child: isLoading
+                            ? SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  color: colorScheme.onPrimary,
+                                ),
+                              )
+                            : const Text('Send Reset Link'),
                       );
                     },
+                  ),
+                  const SizedBox(height: DesignSystem.spacing6),
+                  TextButton(
+                    onPressed: () => context.pop(),
+                    child: Text(
+                      'Back to Sign In',
+                      style: DesignSystem.bodyMedium.copyWith(
+                        color: colorScheme.primary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
                 ],
               ),

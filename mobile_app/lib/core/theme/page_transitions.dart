@@ -1,108 +1,140 @@
 import 'package:flutter/material.dart';
+import 'package:eventflow_app/core/theme/design_system.dart';
 
 class PageTransitions {
-  static Route<T> fadeThrough<T>(Widget page) {
-    return PageRouteBuilder<T>(
-      pageBuilder: (context, animation, secondaryAnimation) => page,
-      transitionDuration: const Duration(milliseconds: 300),
-      reverseTransitionDuration: const Duration(milliseconds: 250),
-      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        return FadeTransition(
-          opacity: CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeOutCubic,
-            reverseCurve: Curves.easeInCubic,
-          ),
-          child: SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0, 0.02),
-              end: Offset.zero,
-            ).animate(CurvedAnimation(
-              parent: animation,
-              curve: Curves.easeOutCubic,
-            )),
-            child: child,
-          ),
-        );
-      },
+  PageTransitions._();
+
+  // ─── Transitions Builder Functions ────────────────────────────────
+  // Use these as `transitionsBuilder` in CustomTransitionPage.
+
+  static Widget fadeThrough(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    final curved = CurvedAnimation(
+      parent: animation,
+      curve: DesignSystem.easeEmphasized,
+      reverseCurve: DesignSystem.easeEmphasized,
+    );
+    return FadeTransition(
+      opacity: Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(
+          parent: animation,
+          curve: const Interval(0.0, 0.8, curve: DesignSystem.easeEmphasized),
+        ),
+      ),
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0.0, 0.04),
+          end: Offset.zero,
+        ).animate(curved),
+        child: child,
+      ),
     );
   }
 
-  static Route<T> slideFromRight<T>(Widget page) {
-    return PageRouteBuilder<T>(
-      pageBuilder: (context, animation, secondaryAnimation) => page,
-      transitionDuration: const Duration(milliseconds: 300),
-      reverseTransitionDuration: const Duration(milliseconds: 250),
-      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        const begin = Offset(1.0, 0.0);
-        const end = Offset.zero;
-        final tween = Tween<Offset>(begin: begin, end: end).animate(
-          CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeOutCubic,
-            reverseCurve: Curves.easeInCubic,
-          ),
-        );
-        final slideTransition = SlideTransition(position: tween, child: child);
-        final fadeTransition = FadeTransition(
-          opacity: CurvedAnimation(
-            parent: animation,
-            curve: const Interval(0.3, 1.0, curve: Curves.easeOut),
-          ),
-          child: slideTransition,
-        );
-        return fadeTransition;
-      },
+  static Widget slideFromRight(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    final slideTween = Tween<Offset>(
+      begin: const Offset(1.0, 0.0),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: animation,
+      curve: DesignSystem.easeEmphasizedDecelerate,
+      reverseCurve: DesignSystem.easeEmphasizedAccelerate,
+    ));
+    final fadeTween = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: animation,
+        curve: const Interval(0.3, 1.0, curve: Curves.easeOut),
+      ),
+    );
+    return FadeTransition(
+      opacity: fadeTween,
+      child: SlideTransition(position: slideTween, child: child),
     );
   }
 
-  static Route<T> slideFromBottom<T>(Widget page) {
-    return PageRouteBuilder<T>(
-      pageBuilder: (context, animation, secondaryAnimation) => page,
-      transitionDuration: const Duration(milliseconds: 300),
-      reverseTransitionDuration: const Duration(milliseconds: 250),
-      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        const begin = Offset(0.0, 1.0);
-        const end = Offset.zero;
-        final tween = Tween<Offset>(begin: begin, end: end).animate(
-          CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeOutCubic,
-            reverseCurve: Curves.easeInCubic,
-          ),
-        );
-        return SlideTransition(position: tween, child: child);
-      },
+  static Widget slideFromBottom(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    final slideTween = Tween<Offset>(
+      begin: const Offset(0.0, 0.15),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: animation,
+      curve: DesignSystem.easeEmphasizedDecelerate,
+      reverseCurve: DesignSystem.easeEmphasizedAccelerate,
+    ));
+    final fadeTween = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: animation,
+        curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
+      ),
+    );
+    return FadeTransition(
+      opacity: fadeTween,
+      child: SlideTransition(position: slideTween, child: child),
     );
   }
 
-  static Route<T> scaleTransition<T>(Widget page) {
-    return PageRouteBuilder<T>(
-      pageBuilder: (context, animation, secondaryAnimation) => page,
-      transitionDuration: const Duration(milliseconds: 400),
-      reverseTransitionDuration: const Duration(milliseconds: 300),
-      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        final scaleTween = Tween<double>(begin: 0.9, end: 1.0).animate(
-          CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeOutCubic,
-            reverseCurve: Curves.easeInCubic,
-          ),
-        );
-        final fadeTween = Tween<double>(begin: 0.0, end: 1.0).animate(
-          CurvedAnimation(
-            parent: animation,
-            curve: const Interval(0.0, 0.5, curve: Curves.easeOut),
-          ),
-        );
-        return ScaleTransition(
-          scale: scaleTween,
-          child: FadeTransition(
-            opacity: fadeTween,
-            child: child,
-          ),
-        );
-      },
+  static Widget scaleTransition(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    final scaleTween = Tween<double>(begin: 0.92, end: 1.0).animate(
+      CurvedAnimation(
+        parent: animation,
+        curve: DesignSystem.easeEmphasizedDecelerate,
+        reverseCurve: DesignSystem.easeEmphasizedAccelerate,
+      ),
+    );
+    final fadeTween = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: animation,
+        curve: const Interval(0.0, 0.4, curve: Curves.easeOut),
+      ),
+    );
+    return ScaleTransition(
+      scale: scaleTween,
+      child: FadeTransition(opacity: fadeTween, child: child),
+    );
+  }
+
+  static Widget sharedAxisHorizontal(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    final slideTween = Tween<Offset>(
+      begin: const Offset(0.3, 0.0),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: animation,
+      curve: DesignSystem.easeEmphasized,
+      reverseCurve: DesignSystem.easeEmphasized,
+    ));
+    final fadeTween = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: animation,
+        curve: const Interval(0.0, 0.7, curve: Curves.easeOut),
+      ),
+    );
+    return FadeTransition(
+      opacity: fadeTween,
+      child: SlideTransition(position: slideTween, child: child),
     );
   }
 }

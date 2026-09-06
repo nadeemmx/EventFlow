@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:eventflow_app/core/theme/app_dimens.dart';
+import 'package:flutter/services.dart';
+import 'package:eventflow_app/core/theme/design_system.dart';
 
 class StatCard extends StatelessWidget {
   final String title;
@@ -7,6 +8,7 @@ class StatCard extends StatelessWidget {
   final IconData icon;
   final Color color;
   final VoidCallback? onTap;
+  final String? subtitle;
 
   const StatCard({
     super.key,
@@ -15,69 +17,79 @@ class StatCard extends StatelessWidget {
     required this.icon,
     required this.color,
     this.onTap,
+    this.subtitle,
   });
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppDimens.md,
-          vertical: AppDimens.sm + 2,
-        ),
+      onTap: onTap != null
+          ? () {
+              HapticFeedback.lightImpact();
+              onTap?.call();
+            }
+          : null,
+      child: AnimatedContainer(
+        duration: DesignSystem.durationNormal,
+        curve: DesignSystem.easeStandard,
+        padding: const EdgeInsets.all(DesignSystem.spacing3),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [color, color.withValues(alpha: 0.7)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+          color: colorScheme.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(DesignSystem.radiusLg),
+          border: Border.all(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+            width: 1,
           ),
-          borderRadius: BorderRadius.circular(AppDimens.radiusXl),
-          boxShadow: [
-            BoxShadow(
-              color: color.withValues(alpha: 0.25),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
-            ),
-          ],
+          boxShadow: onTap != null
+              ? [
+                  BoxShadow(
+                    color: colorScheme.shadow.withValues(alpha: 0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Container(
-              padding: const EdgeInsets.all(AppDimens.xs),
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(AppDimens.radiusSm),
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(DesignSystem.radiusSm),
               ),
-              child: Icon(icon, color: Colors.white, size: AppDimens.iconSm),
+              child: Icon(icon, color: color, size: 20),
             ),
-            const SizedBox(height: AppDimens.xs + 2),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Text(
-                value,
-                style: const TextStyle(
-                  fontSize: AppDimens.fontXl,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                  letterSpacing: -0.5,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    value,
+                    style: DesignSystem.titleLarge.copyWith(
+                      color: colorScheme.onSurface,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    maxLines: 1,
+                  ),
                 ),
-                maxLines: 1,
-              ),
-            ),
-            const SizedBox(height: 1),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: AppDimens.fontXs,
-                fontWeight: FontWeight.w500,
-                color: Colors.white.withValues(alpha: 0.85),
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+                const SizedBox(height: 2),
+                Text(
+                  title,
+                  style: DesignSystem.labelSmall.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
           ],
         ),

@@ -1,7 +1,7 @@
 from rest_framework.routers import DefaultRouter
 from apps.authentication.views import (
     LoginView, RefreshView, LogoutView, ForgotPasswordView,
-    ResetPasswordView, ChangePasswordView, ProfileView,
+    ResetPasswordView, ChangePasswordView, ProfileView, RegisterView,
 )
 from apps.tenants.views import TenantViewSet
 from apps.users.views import UserViewSet
@@ -119,6 +119,7 @@ router.register(r"quotations", QuotationViewSet, basename="quotation")
 api_router = router
 
 auth_urls = [
+    path("auth/register/", RegisterView.as_view(), name="auth-register"),
     path("auth/login/", LoginView.as_view(), name="auth-login"),
     path("auth/refresh/", RefreshView.as_view(), name="auth-refresh"),
     path("auth/logout/", LogoutView.as_view(), name="auth-logout"),

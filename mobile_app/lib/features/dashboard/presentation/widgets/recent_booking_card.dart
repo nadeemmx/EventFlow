@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:eventflow_app/core/theme/app_colors.dart';
-import 'package:eventflow_app/core/theme/app_dimens.dart';
+import 'package:flutter/services.dart';
+import 'package:eventflow_app/core/theme/design_system.dart';
 import 'package:eventflow_app/core/utils/formatters.dart';
-import 'package:eventflow_app/core/widgets/status_chip.dart';
-import 'package:eventflow_app/core/widgets/premium_avatar.dart';
 import 'package:eventflow_app/features/dashboard/data/models/dashboard_model.dart';
 
 class RecentBookingCard extends StatelessWidget {
@@ -12,72 +10,116 @@ class RecentBookingCard extends StatelessWidget {
 
   const RecentBookingCard({super.key, required this.booking, this.onTap});
 
-  Color _statusColor(String status) {
+  Color _statusColor(String status, ColorScheme colorScheme) {
     switch (status) {
-      case 'CONFIRMED': return AppColors.bookingConfirmed;
-      case 'TENTATIVE': return AppColors.bookingTentative;
-      case 'COMPLETED': return AppColors.bookingCompleted;
-      case 'CANCELLED': return AppColors.bookingCancelled;
-      case 'IN_PROGRESS': return AppColors.bookingInProgress;
-      default: return AppColors.bookingDraft;
+      case 'CONFIRMED':
+        return DesignSystem.success;
+      case 'TENTATIVE':
+        return DesignSystem.warning;
+      case 'COMPLETED':
+        return const Color(0xFF059669);
+      case 'CANCELLED':
+        return colorScheme.error;
+      case 'IN_PROGRESS':
+        return DesignSystem.info;
+      default:
+        return colorScheme.onSurfaceVariant;
+    }
+  }
+
+  Color _statusBg(String status, ColorScheme colorScheme) {
+    switch (status) {
+      case 'CONFIRMED':
+        return DesignSystem.successLight;
+      case 'TENTATIVE':
+        return DesignSystem.warningLight;
+      case 'COMPLETED':
+        return DesignSystem.successLight;
+      case 'CANCELLED':
+        return colorScheme.errorContainer;
+      case 'IN_PROGRESS':
+        return DesignSystem.infoLight;
+      default:
+        return colorScheme.surfaceContainerHighest;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = _statusColor(booking.status);
+    final colorScheme = Theme.of(context).colorScheme;
+    final statusColor = _statusColor(booking.status, colorScheme);
+    final statusBg = _statusBg(booking.status, colorScheme);
     final initials = booking.customerName.isNotEmpty
         ? booking.customerName.split(' ').take(2).map((w) => w[0].toUpperCase()).join()
         : '?';
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: AppDimens.lg, vertical: AppDimens.xs),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppDimens.radiusXl),
-        border: Border.all(color: AppColors.borderLight, width: 1),
-        boxShadow: AppColors.cardShadow,
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: DesignSystem.spacing4,
+        vertical: DesignSystem.spacing1,
       ),
       child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(AppDimens.radiusXl),
+        color: colorScheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(DesignSystem.radiusLg),
         child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(AppDimens.radiusXl),
-          child: Padding(
-            padding: const EdgeInsets.all(AppDimens.lg),
+          onTap: onTap != null
+              ? () {
+                  HapticFeedback.lightImpact();
+                  onTap?.call();
+                }
+              : null,
+          borderRadius: BorderRadius.circular(DesignSystem.radiusLg),
+          child: Container(
+            padding: const EdgeInsets.all(DesignSystem.spacing3),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(DesignSystem.radiusLg),
+              border: Border.all(
+                color: colorScheme.outlineVariant.withValues(alpha: 0.4),
+                width: 1,
+              ),
+            ),
             child: Row(
               children: [
-                GradientAvatar(
-                  initials: initials,
-                  radius: AppDimens.avatarMd / 2,
-                  gradient: LinearGradient(
-                    colors: [statusColor, statusColor.withValues(alpha: 0.6)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [statusColor, statusColor.withValues(alpha: 0.7)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(DesignSystem.radiusMd),
+                  ),
+                  child: Center(
+                    child: Text(
+                      initials,
+                      style: DesignSystem.labelMedium.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(width: AppDimens.md),
+                const SizedBox(width: DesignSystem.spacing3),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         booking.customerName,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: AppDimens.fontMd,
-                          color: AppColors.textPrimary,
+                        style: DesignSystem.bodyMedium.copyWith(
+                          color: colorScheme.onSurface,
+                          fontWeight: FontWeight.w600,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: AppDimens.xs),
+                      const SizedBox(height: 2),
                       Text(
-                        '${booking.bookingNumber} · ${booking.eventDate}',
-                        style: const TextStyle(
-                          fontSize: AppDimens.fontSm,
-                          color: AppColors.textSecondary,
+                        '${booking.bookingNumber}  ·  ${booking.eventDate}',
+                        style: DesignSystem.bodySmall.copyWith(
+                          color: colorScheme.onSurfaceVariant,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -85,23 +127,34 @@ class RecentBookingCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: AppDimens.sm),
+                const SizedBox(width: DesignSystem.spacing2),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
                       Formatters.currency(booking.totalAmount),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: AppDimens.fontMd,
-                        color: AppColors.textPrimary,
+                      style: DesignSystem.bodyMedium.copyWith(
+                        color: colorScheme.onSurface,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: AppDimens.xs),
-                    StatusChip(
-                      label: Formatters.statusLabel(booking.status),
-                      color: statusColor,
-                      small: true,
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: DesignSystem.spacing2,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: statusBg,
+                        borderRadius: BorderRadius.circular(DesignSystem.radiusXs),
+                      ),
+                      child: Text(
+                        Formatters.statusLabel(booking.status),
+                        style: DesignSystem.labelSmall.copyWith(
+                          color: statusColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ],
                 ),

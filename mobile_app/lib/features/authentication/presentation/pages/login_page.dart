@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:eventflow_app/core/theme/app_colors.dart';
-import 'package:eventflow_app/core/theme/app_dimens.dart';
+import 'package:eventflow_app/core/theme/design_system.dart';
 import 'package:eventflow_app/core/utils/validators.dart';
 import 'package:eventflow_app/features/authentication/presentation/bloc/auth_bloc.dart';
+import 'package:eventflow_app/features/authentication/presentation/widgets/auth_text_field.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -17,12 +18,16 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _emailFocus = FocusNode();
+  final _passwordFocus = FocusNode();
   bool _obscurePassword = true;
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _emailFocus.dispose();
+    _passwordFocus.dispose();
     super.dispose();
   }
 
@@ -39,13 +44,24 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
-        if (state is AuthAuthenticated || state is AuthGuestAuthenticated) {
+        if (state is AuthAuthenticated) {
           context.go('/dashboard');
+        } else if (state is AuthGuestAuthenticated) {
+          context.go('/demo');
         } else if (state is AuthError) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.message), backgroundColor: AppColors.error),
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: colorScheme.error,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(DesignSystem.radiusMd),
+              ),
+            ),
           );
         }
       },
@@ -53,265 +69,219 @@ class _LoginPageState extends State<LoginPage> {
         backgroundColor: AppColors.background,
         body: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: AppDimens.xxl),
+            padding: const EdgeInsets.symmetric(horizontal: DesignSystem.spacing6),
             child: Form(
               key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: AppDimens.massive),
+                  const SizedBox(height: DesignSystem.spacing12),
+                  // Logo
                   Center(
-                    child: Hero(
-                      tag: 'auth_logo',
-                      child: Container(
-                        width: 72,
-                        height: 72,
-                        decoration: BoxDecoration(
-                          gradient: AppColors.primaryGradient,
-                          borderRadius: BorderRadius.circular(AppDimens.radiusLg),
-                          boxShadow: AppColors.softShadow,
-                        ),
-                        child: const Icon(
-                          Icons.event_available_rounded,
-                          size: 36,
-                          color: Colors.white,
+                    child: Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(DesignSystem.radiusXl),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(DesignSystem.radiusXl),
+                        child: Image.asset(
+                          'assets/images/logo.png',
+                          width: 60,
+                          height: 60,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Icon(
+                              Icons.event_available_rounded,
+                              size: 40,
+                              color: AppColors.primary,
+                            );
+                          },
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: AppDimens.xxxl),
+                  const SizedBox(height: DesignSystem.spacing8),
+                  // Title
                   Text(
-                    'Welcome back',
-                    style: TextStyle(
-                      fontSize: AppDimens.fontDisplay,
-                      fontWeight: FontWeight.w800,
+                    'Welcome Back',
+                    style: DesignSystem.headlineLarge.copyWith(
                       color: AppColors.textPrimary,
-                      letterSpacing: -1.0,
-                      height: 1.1,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.5,
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: AppDimens.sm),
+                  const SizedBox(height: DesignSystem.spacing2),
                   Text(
-                    'Sign in to continue',
-                    style: TextStyle(
-                      fontSize: AppDimens.fontBase,
+                    'Sign in to your account',
+                    style: DesignSystem.bodyLarge.copyWith(
                       color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w400,
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: AppDimens.huge + AppDimens.lg),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(AppDimens.radiusMd),
-                    child: TextFormField(
-                      controller: _emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      textInputAction: TextInputAction.next,
-                      style: const TextStyle(
-                        fontSize: AppDimens.fontBase,
-                        color: AppColors.textPrimary,
-                      ),
-                      decoration: InputDecoration(
-                        hintText: 'Email address',
-                        hintStyle: const TextStyle(color: AppColors.textHint),
-                        prefixIcon: const Icon(Icons.email_outlined, color: AppColors.textTertiary, size: AppDimens.iconMd),
-                        filled: true,
-                        fillColor: AppColors.surface,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: AppDimens.xl,
-                          vertical: AppDimens.lg,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppDimens.radiusMd),
-                          borderSide: const BorderSide(color: AppColors.border),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppDimens.radiusMd),
-                          borderSide: const BorderSide(color: AppColors.border),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppDimens.radiusMd),
-                          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
-                        ),
-                        errorBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppDimens.radiusMd),
-                          borderSide: const BorderSide(color: AppColors.error),
-                        ),
-                        focusedErrorBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppDimens.radiusMd),
-                          borderSide: const BorderSide(color: AppColors.error, width: 1.5),
-                        ),
-                      ),
-                      validator: Validators.email,
-                    ),
+                  const SizedBox(height: DesignSystem.spacing10),
+                  // Email
+                  AuthTextField(
+                    controller: _emailController,
+                    focusNode: _emailFocus,
+                    hint: 'Email address',
+                    prefixIcon: Icons.email_outlined,
+                    keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
+                    validator: Validators.email,
+                    onEditingComplete: () => _passwordFocus.requestFocus(),
+                    autofillHint: 'email',
                   ),
-                  const SizedBox(height: AppDimens.lg),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(AppDimens.radiusMd),
-                    child: TextFormField(
-                      controller: _passwordController,
-                      obscureText: _obscurePassword,
-                      textInputAction: TextInputAction.done,
-                      onFieldSubmitted: (_) => _onLogin(),
-                      style: const TextStyle(
-                        fontSize: AppDimens.fontBase,
-                        color: AppColors.textPrimary,
-                      ),
-                      decoration: InputDecoration(
-                        hintText: 'Password',
-                        hintStyle: const TextStyle(color: AppColors.textHint),
-                        prefixIcon: const Icon(Icons.lock_outlined, color: AppColors.textTertiary, size: AppDimens.iconMd),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-                            color: AppColors.textTertiary,
-                            size: AppDimens.iconMd,
-                          ),
-                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                        ),
-                        filled: true,
-                        fillColor: AppColors.surface,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: AppDimens.xl,
-                          vertical: AppDimens.lg,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppDimens.radiusMd),
-                          borderSide: const BorderSide(color: AppColors.border),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppDimens.radiusMd),
-                          borderSide: const BorderSide(color: AppColors.border),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppDimens.radiusMd),
-                          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
-                        ),
-                        errorBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppDimens.radiusMd),
-                          borderSide: const BorderSide(color: AppColors.error),
-                        ),
-                        focusedErrorBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppDimens.radiusMd),
-                          borderSide: const BorderSide(color: AppColors.error, width: 1.5),
-                        ),
-                      ),
-                      validator: Validators.password,
+                  const SizedBox(height: DesignSystem.spacing4),
+                  // Password
+                  AuthTextField(
+                    controller: _passwordController,
+                    focusNode: _passwordFocus,
+                    hint: 'Password',
+                    prefixIcon: Icons.lock_outlined,
+                    obscureText: _obscurePassword,
+                    textInputAction: TextInputAction.done,
+                    onEditingComplete: _onLogin,
+                    validator: Validators.password,
+                    suffixIcon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility_off_rounded
+                          : Icons.visibility_rounded,
+                      size: 22,
+                      color: AppColors.textTertiary,
                     ),
+                    onSuffixTap: () => setState(() => _obscurePassword = !_obscurePassword),
+                    autofillHint: 'password',
                   ),
-                  const SizedBox(height: AppDimens.sm),
+                  const SizedBox(height: DesignSystem.spacing2),
+                  // Forgot password
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
                       onPressed: () => context.push('/forgot-password'),
                       style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: AppDimens.sm, vertical: AppDimens.sm),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: DesignSystem.spacing2,
+                          vertical: DesignSystem.spacing1,
+                        ),
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                       child: Text(
                         'Forgot Password?',
-                        style: TextStyle(
-                          fontSize: AppDimens.fontSm,
-                          fontWeight: FontWeight.w600,
+                        style: DesignSystem.labelLarge.copyWith(
                           color: AppColors.primary,
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: AppDimens.xxl),
+                  const SizedBox(height: DesignSystem.spacing6),
+                  // Sign In button
                   BlocBuilder<AuthBloc, AuthState>(
                     builder: (context, state) {
-                      return AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        height: AppDimens.buttonHeight,
-                        decoration: BoxDecoration(
-                          gradient: state is AuthLoading ? null : AppColors.primaryGradient,
-                          color: state is AuthLoading ? AppColors.textHint : null,
-                          borderRadius: BorderRadius.circular(AppDimens.radiusMd),
-                          boxShadow: state is AuthLoading ? [] : AppColors.softShadow,
-                        ),
+                      final isLoading = state is AuthLoading;
+                      return SizedBox(
+                        height: 56,
                         child: ElevatedButton(
-                          onPressed: state is AuthLoading ? null : _onLogin,
+                          onPressed: isLoading ? null : _onLogin,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            shadowColor: Colors.transparent,
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.5),
+                            disabledForegroundColor: Colors.white70,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(AppDimens.radiusMd),
+                              borderRadius: BorderRadius.circular(DesignSystem.radiusMd),
                             ),
                             elevation: 0,
                           ),
-                          child: state is AuthLoading
+                          child: isLoading
                               ? const SizedBox(
-                                  height: 22,
                                   width: 22,
-                                  child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
-                                )
-                              : const Text(
-                                  'Sign In',
-                                  style: TextStyle(
-                                    fontSize: AppDimens.fontBase,
-                                    fontWeight: FontWeight.w700,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
                                     color: Colors.white,
-                                    letterSpacing: 0.3,
                                   ),
-                                ),
+                                )
+                              : const Text('Sign In'),
                         ),
                       );
                     },
                   ),
-                  const SizedBox(height: AppDimens.xxl),
+                  const SizedBox(height: DesignSystem.spacing6),
+                  // Divider
                   Row(
                     children: [
-                      const Expanded(child: Divider(color: AppColors.border)),
+                      Expanded(
+                        child: Divider(color: AppColors.border),
+                      ),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: AppDimens.lg),
+                        padding: const EdgeInsets.symmetric(horizontal: DesignSystem.spacing4),
                         child: Text(
                           'OR',
-                          style: TextStyle(
-                            fontSize: AppDimens.fontSm,
-                            fontWeight: FontWeight.w600,
+                          style: DesignSystem.labelSmall.copyWith(
                             color: AppColors.textTertiary,
-                            letterSpacing: 1.0,
+                            letterSpacing: 1.2,
                           ),
                         ),
                       ),
-                      const Expanded(child: Divider(color: AppColors.border)),
+                      Expanded(
+                        child: Divider(color: AppColors.border),
+                      ),
                     ],
                   ),
-                  const SizedBox(height: AppDimens.xxl),
-                  Container(
-                    height: AppDimens.buttonHeight,
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(AppDimens.radiusMd),
-                      border: Border.all(color: AppColors.border),
+                  const SizedBox(height: DesignSystem.spacing6),
+                  // Guest button
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      context.read<AuthBloc>().add(GuestLoginRequested());
+                    },
+                    icon: const Icon(
+                      Icons.person_outline_rounded,
+                      size: 20,
+                      color: AppColors.textSecondary,
                     ),
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        context.read<AuthBloc>().add(GuestLoginRequested());
-                      },
-                      icon: const Icon(Icons.person_outline_rounded, color: AppColors.textSecondary, size: AppDimens.iconMd),
-                      label: const Text(
-                        'Continue as Guest',
-                        style: TextStyle(
-                          fontSize: AppDimens.fontBase,
-                          fontWeight: FontWeight.w600,
+                    label: Text(
+                      'Continue as Guest',
+                      style: DesignSystem.titleSmall.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 56),
+                      side: const BorderSide(color: AppColors.border),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(DesignSystem.radiusMd),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: DesignSystem.spacing10),
+                  // Sign up link
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        "Don't have an account? ",
+                        style: DesignSystem.bodyMedium.copyWith(
                           color: AppColors.textSecondary,
                         ),
                       ),
-                      style: OutlinedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        side: BorderSide.none,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppDimens.radiusMd),
+                      GestureDetector(
+                        onTap: () => context.go('/signup'),
+                        child: Text(
+                          'Sign Up',
+                          style: DesignSystem.bodyMedium.copyWith(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                        elevation: 0,
                       ),
-                    ),
+                    ],
                   ),
-                  const SizedBox(height: AppDimens.huge),
+                  const SizedBox(height: DesignSystem.spacing6),
                 ],
               ),
             ),

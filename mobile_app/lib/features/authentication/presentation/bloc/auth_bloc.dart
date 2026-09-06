@@ -82,6 +82,25 @@ class UploadProfileImage extends AuthEvent {
   List<Object?> get props => [filePath];
 }
 
+class RegisterRequested extends AuthEvent {
+  final String fullName;
+  final String email;
+  final String password;
+  final String confirmPassword;
+  final String? mobile;
+
+  const RegisterRequested({
+    required this.fullName,
+    required this.email,
+    required this.password,
+    required this.confirmPassword,
+    this.mobile,
+  });
+
+  @override
+  List<Object?> get props => [fullName, email, password, confirmPassword, mobile];
+}
+
 class CheckAuthStatus extends AuthEvent {}
 
 class GuestLoginRequested extends AuthEvent {}
@@ -167,6 +186,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     required this._tokenService,
   }) : super(AuthInitial()) {
     on<LoginRequested>(_onLogin);
+    on<RegisterRequested>(_onRegister);
     on<ForgotPasswordRequested>(_onForgotPassword);
     on<ResetPasswordRequested>(_onResetPassword);
     on<ChangePasswordRequested>(_onChangePassword);
@@ -183,6 +203,23 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(AuthLoading());
     try {
       final response = await _authRepository.login(event.email, event.password);
+      await _tokenService.saveUserData(jsonEncode(response.user.toJson()));
+      emit(AuthAuthenticated(user: response.user));
+    } catch (e) {
+      emit(AuthError(message: _extractErrorMessage(e)));
+    }
+  }
+
+  Future<void> _onRegister(RegisterRequested event, Emitter<AuthState> emit) async {
+    emit(AuthLoading());
+    try {
+      final response = await _authRepository.register(
+        fullName: event.fullName,
+        email: event.email,
+        password: event.password,
+        confirmPassword: event.confirmPassword,
+        mobile: event.mobile,
+      );
       await _tokenService.saveUserData(jsonEncode(response.user.toJson()));
       emit(AuthAuthenticated(user: response.user));
     } catch (e) {
@@ -271,44 +308,86 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _onCheckAuthStatus(CheckAuthStatus event, Emitter<AuthState> emit) async {
-    final isGuest = await _authRepository.isGuest();
-    if (isGuest) {
-      final user = await _authRepository.guestLogin();
-      emit(AuthGuestAuthenticated(user: user));
-      return;
-    }
-    final isLoggedIn = await _authRepository.isLoggedIn();
-    if (isLoggedIn) {
-      final userData = await _tokenService.getUserData();
-      if (userData != null) {
-        try {
-          final decoded = jsonDecode(userData);
-          if (decoded is Map<String, dynamic>) {
-            final user = UserModel.fromJson(decoded);
-            emit(AuthAuthenticated(user: user));
-          } else {
-            emit(AuthUnauthenticated());
-          }
-        } catch (_) {
-          await _tokenService.clearTokens();
-          emit(AuthUnauthenticated());
+    try {
+      final isGuest = await _authRepository.isGuest();
+      final isLoggedIn = await _authRepository.isLoggedIn();
+
+      if (isLoggedIn) {
+        if (isGuest) {
+          await _authRepository.guestLogout();
         }
-      } else {
+        final userData = await _tokenService.getUserData();
+        if (userData != null && userData.isNotEmpty) {
+          try {
+            final decoded = jsonDecode(userData);
+            if (decoded is Map<String, dynamic>) {
+              final user = UserModel.fromJson(decoded);
+              emit(AuthAuthenticated(user: user));
+              return;
+            }
+          } catch (_) {
+            await _tokenService.clearTokens();
+          }
+        }
         emit(AuthUnauthenticated());
+        return;
       }
-    } else {
+
+      if (isGuest) {
+        await _authRepository.guestLogout();
+        emit(AuthUnauthenticated());
+        return;
+      }
+
+      emit(AuthUnauthenticated());
+    } catch (_) {
       emit(AuthUnauthenticated());
     }
   }
 
   String _extractErrorMessage(dynamic error) {
     if (error is DioException) {
+      final statusCode = error.response?.statusCode;
       final data = error.response?.data;
-      if (data is Map<String, dynamic>) {
-        return data['message'] as String? ?? error.message ?? 'Something went wrong';
+
+      if (error.type == DioExceptionType.connectionError ||
+          error.type == DioExceptionType.sendTimeout ||
+          error.type == DioExceptionType.receiveTimeout) {
+        return 'Unable to connect. Please check your internet connection and try again.';
       }
+
+      if (data is Map<String, dynamic>) {
+        if (statusCode == 409) {
+          return 'An account with this email already exists. Try signing in.';
+        }
+
+        if (data.containsKey('errors') && data['errors'] is Map) {
+          final errors = data['errors'] as Map<String, dynamic>;
+          final firstError = errors.values.first;
+          if (firstError is List && firstError.isNotEmpty) {
+            return firstError.first.toString();
+          }
+        }
+
+        return data['message'] as String? ??
+            data['detail'] as String? ??
+            error.message ??
+            'Something went wrong';
+      }
+
+      if (data is String) {
+        return data;
+      }
+
       return error.message ?? 'Something went wrong';
     }
-    return error.toString();
+
+    final errorStr = error.toString();
+    if (errorStr.contains('SocketException') ||
+        errorStr.contains('Connection refused')) {
+      return 'Unable to connect. Please check your internet connection and try again.';
+    }
+
+    return errorStr.replaceFirst('Exception: ', '');
   }
 }
