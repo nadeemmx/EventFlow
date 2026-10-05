@@ -3,6 +3,9 @@ from rest_framework.response import Response
 
 
 class DomainException(Exception):
+    # Consumed by custom_exception_handler via getattr(exc, "status_code", 400).
+    status_code = 400
+
     def __init__(self, message="Domain error", code=None, details=None):
         self.message = message
         self.code = code
@@ -11,27 +14,27 @@ class DomainException(Exception):
 
 
 class ValidationException(DomainException):
-    pass
+    status_code = 400
 
 
 class PermissionDeniedException(DomainException):
-    pass
+    status_code = 403
 
 
 class NotFoundException(DomainException):
-    pass
+    status_code = 404
 
 
 class ConflictException(DomainException):
-    pass
+    status_code = 409
 
 
 class TenantMismatchException(PermissionDeniedException):
-    pass
+    status_code = 403
 
 
 class SubscriptionLimitException(DomainException):
-    pass
+    status_code = 402
 
 
 def custom_exception_handler(exc, context):

@@ -8,6 +8,9 @@ from services.user_service import UserService
 from core.responses import ok, error
 from core.exceptions import ValidationException
 from permissions.roles import IsOwner, IsSuperAdmin
+from apps.users.models import User
+
+
 class UserViewSet(viewsets.ModelViewSet):
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated, ModuleAccessPermission, TenantScopedPermission]
@@ -18,7 +21,6 @@ class UserViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         tenant = self.request.tenant
         if self.request.user.role == "SUPER_ADMIN":
-            from apps.users.models import User
             return User.objects.all()
         return User.objects.filter(tenant=tenant).select_related("tenant")
 

@@ -16,6 +16,19 @@ from core.responses import ok, error, paginated
 from core.exceptions import ValidationException, ConflictException
 
 
+def _parse_page_param(raw, default):
+    """Parse a positive integer query param, falling back to default.
+
+    Avoids an unhandled ValueError (HTTP 500) on inputs such as
+    ``?page=abc``.
+    """
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        return default
+    return value if value >= 1 else default
+
+
 class SettingsViewSet(viewsets.GenericViewSet):
     permission_classes = [IsAuthenticated, ModuleAccessPermission, TenantScopedPermission]
     module_name = "settings"
@@ -135,8 +148,8 @@ class SettingsViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=["get", "post"])
     def users(self, request):
         if request.method == "GET":
-            page = int(request.query_params.get("page", 1))
-            page_size = int(request.query_params.get("page_size", 20))
+            page = _parse_page_param(request.query_params.get("page"), 1)
+            page_size = _parse_page_param(request.query_params.get("page_size"), 20)
             page_obj = self.service.get_user_list(page=page, page_size=page_size)
             serializer = UserSerializer(page_obj.object_list, many=True)
             return ok({

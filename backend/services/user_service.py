@@ -15,6 +15,9 @@ class UserService(BaseService):
         return self.repo
 
     def create_user(self, data):
+        password = data.get("password")
+        if not password:
+            raise ValidationException("Password is required")
         if self.tenant:
             existing = self.repo.get_by_email(data["email"])
             if existing and existing.tenant_id == self.tenant.id:
@@ -26,7 +29,7 @@ class UserService(BaseService):
             mobile=data.get("mobile", ""),
             role=data.get("role", UserRole.STAFF),
         )
-        user.set_password(data["password"])
+        user.set_password(password)
         user.save()
         self.audit_repo.log(
             tenant=self.tenant, user=self.user,
@@ -36,9 +39,14 @@ class UserService(BaseService):
         return user
 
     def update_user(self, user_id, data):
+        data = dict(data)
+        password = data.pop("password", None)
         user = self.repo.get_by_id(user_id)
         old_role = user.role
         user = self.repo.update(user, **data)
+        if password:
+            user.set_password(password)
+            user.save()
         if "role" in data and data["role"] != old_role:
             self.audit_repo.log(
                 tenant=self.tenant, user=self.user,

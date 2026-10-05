@@ -6,6 +6,10 @@ on:
   push:
     branches: [master]
 
+# Least privilege: the CI jobs only need to read the repository.
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
