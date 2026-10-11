@@ -3,17 +3,23 @@ import 'package:eventflow_app/features/authentication/data/models/login_response
 import 'package:eventflow_app/features/authentication/data/models/user_model.dart';
 import 'package:eventflow_app/core/services/token_service.dart';
 import 'package:eventflow_app/core/services/guest_session_service.dart';
+import 'package:eventflow_app/core/services/notification_service.dart';
 import 'package:eventflow_app/core/services/demo_data_provider.dart';
+import 'package:eventflow_app/core/storage/storage_service.dart';
 
 class AuthRepository {
   final AuthRemoteDataSource _remoteDataSource;
   final TokenService _tokenService;
   final GuestSessionService _guestSessionService;
+  final StorageService _storageService;
+  final NotificationService _notificationService;
 
   AuthRepository({
     required this._remoteDataSource,
     required this._tokenService,
     required this._guestSessionService,
+    required this._storageService,
+    required this._notificationService,
   });
 
   Future<LoginResponseModel> login(String email, String password) async {
@@ -28,6 +34,10 @@ class AuthRepository {
     required String email,
     required String password,
     required String confirmPassword,
+    required bool termsAccepted,
+    required bool privacyAccepted,
+    required bool ageConfirmed,
+    bool marketingOptIn = false,
     String? mobile,
   }) async {
     final loginResponse = await _remoteDataSource.register(
@@ -35,6 +45,10 @@ class AuthRepository {
       email: email,
       password: password,
       confirmPassword: confirmPassword,
+      termsAccepted: termsAccepted,
+      privacyAccepted: privacyAccepted,
+      ageConfirmed: ageConfirmed,
+      marketingOptIn: marketingOptIn,
       mobile: mobile,
     );
     await _tokenService.saveAccessToken(loginResponse.accessToken);
@@ -67,8 +81,45 @@ class AuthRepository {
   }
 
   Future<void> logout() async {
-    await _tokenService.clearTokens();
-    await _guestSessionService.endSession();
+    // 1. Best-effort server-side revocation. The API call must never prevent
+    //    local sign-out (fail silently), so every error is swallowed here.
+    try {
+      final refreshToken = await _tokenService.getRefreshToken();
+      if (refreshToken != null && refreshToken.isNotEmpty) {
+        await _remoteDataSource.logout(refreshToken);
+      }
+    } catch (_) {
+      // Server unreachable / already revoked — still clear local state.
+    }
+
+    // 2. Drop the session.
+    try {
+      await _tokenService.clearTokens();
+    } catch (_) {
+      // Never block sign-out on secure-storage errors.
+    }
+    try {
+      await _guestSessionService.endSession();
+    } catch (_) {
+      // Best effort.
+    }
+
+    // 3. Purge cached customer/booking/lead data (Hive `cache_*` keys) so no
+    //    tenant data survives a logout.
+    try {
+      await _storageService.clearCache();
+    } catch (_) {
+      // Best effort.
+    }
+
+    // 4. Drop this device's FCM token. There is no backend unregister
+    //    endpoint (apps/notifications only exposes list/mark_read), so the
+    //    token is only removed locally.
+    try {
+      await _notificationService.deleteToken();
+    } catch (_) {
+      // Firebase may be unavailable (e.g. missing google-services config).
+    }
   }
 
   Future<bool> isLoggedIn() async {

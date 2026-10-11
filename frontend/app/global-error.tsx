@@ -19,7 +19,11 @@ export default function GlobalError({
             fontFamily: "system-ui, -apple-system, sans-serif",
           }}
         >
-          <div style={{ textAlign: "center", maxWidth: "28rem", padding: "1.5rem" }}>
+          <main
+            id="main-content"
+            tabIndex={-1}
+            style={{ textAlign: "center", maxWidth: "28rem", padding: "1.5rem" }}
+          >
             <h2 style={{ fontSize: "1.25rem", fontWeight: 600, marginBottom: "0.5rem" }}>
               Application Error
             </h2>
@@ -40,7 +44,7 @@ export default function GlobalError({
             >
               Refresh page
             </button>
-          </div>
+          </main>
         </div>
       </body>
     </html>

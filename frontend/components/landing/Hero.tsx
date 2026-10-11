@@ -39,10 +39,10 @@ export default function Hero() {
 
             <div className="anim-up flex flex-col sm:flex-row items-start gap-3 pt-2">
               <a
-                href="/login"
+                href="/signup"
                 className="group inline-flex items-center gap-2 rounded-xl bg-amber-500 px-6 py-3 text-sm font-semibold text-slate-900 hover:bg-amber-600 transition-all hover:shadow-lg hover:shadow-amber-500/25"
               >
-                Start Free Trial
+                Create your account
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
               </a>
               <a
@@ -56,9 +56,9 @@ export default function Hero() {
 
             <div className="anim-up flex items-center gap-6 pt-2">
               {[
-                { number: "500+", label: "Venues" },
-                { number: "50K+", label: "Events" },
-                { number: "99.9%", label: "Uptime" },
+                { number: "No", label: "credit card required to sign up" },
+                { number: "GST", label: "invoices" },
+                { number: "Razorpay", label: "payments" },
               ].map((stat) => (
                 <div key={stat.label} className="flex items-center gap-2">
                   <CheckCircle className="h-4 w-4 text-amber-500" />
@@ -79,6 +79,9 @@ export default function Hero() {
                   <div className="w-2.5 h-2.5 rounded-full bg-yellow-400/60" />
                   <div className="w-2.5 h-2.5 rounded-full bg-green-400/60" />
                   <div className="ml-3 text-xs font-medium text-slate-500">EventFlow Dashboard</div>
+                  <div className="ml-auto text-[10px] font-medium text-slate-500 uppercase tracking-wider">
+                    Sample data
+                  </div>
                 </div>
 
                 <div className="p-4 space-y-3">
@@ -93,7 +96,7 @@ export default function Hero() {
                         <div key={stat.label} className="rounded-lg border border-slate-100 bg-slate-50/50 p-3">
                           <div className="flex items-center justify-between mb-1.5">
                             <Icon className="h-3.5 w-3.5 text-amber-500" />
-                            <span className={`text-[10px] font-semibold ${stat.up ? "text-success" : "text-red-500"}`}>{stat.change}</span>
+                            <span className={`text-[10px] font-semibold ${stat.up ? "text-emerald-700" : "text-red-500"}`}>{stat.change}</span>
                           </div>
                           <p className="text-[10px] text-slate-500">{stat.label}</p>
                           <p className="text-sm font-bold text-slate-900">{stat.value}</p>
@@ -105,7 +108,7 @@ export default function Hero() {
                   <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-3">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs font-medium text-slate-600">Weekly Revenue</span>
-                      <TrendingUp className="h-3 w-3 text-success" />
+                      <TrendingUp className="h-3 w-3 text-emerald-700" />
                     </div>
                     <div className="flex items-end gap-1 h-14">
                       {[40, 55, 45, 70, 85, 65, 90].map((h, i) => (
@@ -116,7 +119,7 @@ export default function Hero() {
                     </div>
                     <div className="flex justify-between mt-1">
                       {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
-                        <span key={d} className="text-[8px] text-slate-400">{d}</span>
+                        <span key={d} className="text-[8px] text-slate-500">{d}</span>
                       ))}
                     </div>
                   </div>
@@ -124,7 +127,7 @@ export default function Hero() {
                   <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-3">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs font-medium text-slate-600">Today&apos;s Schedule</span>
-                      <span className="text-[10px] text-amber-600 font-semibold">3 events</span>
+                      <span className="text-[10px] text-amber-700 font-semibold">3 events</span>
                     </div>
                     <div className="space-y-1.5">
                       {[
@@ -138,7 +141,7 @@ export default function Hero() {
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="text-[10px] text-slate-500">{event.time}</span>
-                            <span className="text-[10px] font-medium text-success">{event.status}</span>
+                            <span className="text-[10px] font-medium text-emerald-700">{event.status}</span>
                           </div>
                         </div>
                       ))}

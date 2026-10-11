@@ -11,7 +11,7 @@ class StaffViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, ModuleAccessPermission, TenantScopedPermission]
     module_name = "staff"
     search_fields = ["name", "mobile", "email"]
-    filterset_fields = ["status"]
+    filterset_fields = ["status", "designation"]
 
     def get_queryset(self):
         tenant = self.request.tenant

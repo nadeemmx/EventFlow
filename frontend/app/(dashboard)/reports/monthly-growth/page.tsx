@@ -69,8 +69,9 @@ export default function MonthlyGrowthPage() {
 
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
         <div className="space-y-1">
-          <label className="text-xs text-muted-foreground">Year</label>
+          <label htmlFor="report-year" className="text-xs text-muted-foreground">Year</label>
           <Input
+            id="report-year"
             type="number"
             value={year}
             onChange={(e) => setYear(Number(e.target.value))}

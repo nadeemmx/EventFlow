@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react"
 import { gsap } from "gsap"
 import { ScrollTrigger } from "gsap/ScrollTrigger"
+import { CookiePreferencesButton } from "@/components/legal/CookieConsent"
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -16,7 +17,7 @@ const footerLinks = {
   ],
   Company: [
     { label: "About", href: "/about" },
-    { label: "Customers", href: "/customers" },
+    { label: "Customer stories", href: "/case-studies" },
     { label: "Blog", href: "/blog" },
     { label: "Careers", href: "/careers" },
     { label: "Contact", href: "/contact" },
@@ -33,6 +34,8 @@ const footerLinks = {
     { label: "Terms of Service", href: "/terms-of-service" },
     { label: "Cookie Policy", href: "/cookie-policy" },
     { label: "GDPR", href: "/gdpr" },
+    { label: "Refund Policy", href: "/refund-policy" },
+    { label: "Privacy Requests", href: "/privacy-request" },
   ],
 }
 
@@ -67,22 +70,22 @@ export default function Footer() {
               </div>
               <span className="font-bold text-base tracking-tight text-white">EventFlow</span>
             </a>
-            <p className="text-xs text-slate-500 leading-relaxed max-w-xs">
-              The complete event management platform for venues of all sizes.
+            <p className="text-xs text-slate-400 leading-relaxed max-w-xs">
+              The event management platform for venues of all sizes.
             </p>
           </div>
 
           {Object.entries(footerLinks).map(([category, links]) => (
             <div key={category} className="footer-col">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-white/60 mb-3">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-white/60 mb-3">
                 {category}
-              </h4>
+              </h3>
               <ul className="space-y-2">
                 {links.map((link) => (
                   <li key={link.label}>
                     <a
                       href={link.href}
-                      className="text-xs sm:text-sm text-slate-500 hover:text-white transition-colors duration-200"
+                      className="text-xs sm:text-sm text-slate-400 hover:text-white transition-colors duration-200"
                     >
                       {link.label}
                     </a>
@@ -94,9 +97,10 @@ export default function Footer() {
         </div>
 
         <div className="mt-10 pt-5 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-400">
             &copy; {new Date().getFullYear()} EventFlow. All rights reserved.
           </p>
+          <CookiePreferencesButton />
         </div>
       </div>
     </footer>

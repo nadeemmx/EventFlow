@@ -88,6 +88,10 @@ class RegisterRequested extends AuthEvent {
   final String password;
   final String confirmPassword;
   final String? mobile;
+  final bool termsAccepted;
+  final bool privacyAccepted;
+  final bool ageConfirmed;
+  final bool marketingOptIn;
 
   const RegisterRequested({
     required this.fullName,
@@ -95,10 +99,24 @@ class RegisterRequested extends AuthEvent {
     required this.password,
     required this.confirmPassword,
     this.mobile,
+    required this.termsAccepted,
+    required this.privacyAccepted,
+    required this.ageConfirmed,
+    this.marketingOptIn = false,
   });
 
   @override
-  List<Object?> get props => [fullName, email, password, confirmPassword, mobile];
+  List<Object?> get props => [
+        fullName,
+        email,
+        password,
+        confirmPassword,
+        mobile,
+        termsAccepted,
+        privacyAccepted,
+        ageConfirmed,
+        marketingOptIn,
+      ];
 }
 
 class CheckAuthStatus extends AuthEvent {}
@@ -211,6 +229,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _onRegister(RegisterRequested event, Emitter<AuthState> emit) async {
+    // Consent gate: registration must never proceed without the user
+    // accepting the legal terms and confirming the minimum age.
+    if (!event.termsAccepted || !event.privacyAccepted || !event.ageConfirmed) {
+      emit(const AuthError(
+        message:
+            'Please accept the Terms of Service and Privacy Policy and confirm you are at least 18 years old.',
+      ));
+      return;
+    }
     emit(AuthLoading());
     try {
       final response = await _authRepository.register(
@@ -219,6 +246,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         password: event.password,
         confirmPassword: event.confirmPassword,
         mobile: event.mobile,
+        termsAccepted: event.termsAccepted,
+        privacyAccepted: event.privacyAccepted,
+        ageConfirmed: event.ageConfirmed,
+        marketingOptIn: event.marketingOptIn,
       );
       await _tokenService.saveUserData(jsonEncode(response.user.toJson()));
       emit(AuthAuthenticated(user: response.user));

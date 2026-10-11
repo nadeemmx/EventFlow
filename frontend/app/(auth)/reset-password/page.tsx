@@ -164,7 +164,10 @@ function ResetPasswordForm() {
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {error && (
-            <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive text-center">
+            <div
+              role="alert"
+              className="rounded-md bg-destructive/10 p-3 text-sm text-destructive text-center"
+            >
               {error}
             </div>
           )}
@@ -177,22 +180,36 @@ function ResetPasswordForm() {
                 type={showPassword ? "text" : "password"}
                 placeholder="Enter new password"
                 autoComplete="new-password"
+                aria-invalid={errors.password ? true : undefined}
+                aria-describedby={
+                  errors.password
+                    ? "password-error password-strength"
+                    : password.length > 0
+                      ? "password-strength"
+                      : undefined
+                }
                 {...register("password")}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
-                tabIndex={-1}
               >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {showPassword ? (
+                  <EyeOff aria-hidden="true" focusable="false" className="h-4 w-4" />
+                ) : (
+                  <Eye aria-hidden="true" focusable="false" className="h-4 w-4" />
+                )}
               </button>
             </div>
             {errors.password && (
-              <p className="text-sm text-destructive">{errors.password.message}</p>
+              <p id="password-error" role="alert" className="text-sm text-destructive">
+                {errors.password.message}
+              </p>
             )}
             {password.length > 0 && (
-              <div className="space-y-1">
+              <div id="password-strength" role="status" className="space-y-1">
                 <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all ${strength.color}`}
@@ -212,19 +229,27 @@ function ResetPasswordForm() {
                 type={showConfirm ? "text" : "password"}
                 placeholder="Confirm new password"
                 autoComplete="new-password"
+                aria-invalid={errors.confirm_password ? true : undefined}
+                aria-describedby={errors.confirm_password ? "confirm-password-error" : undefined}
                 {...register("confirm_password")}
               />
               <button
                 type="button"
                 onClick={() => setShowConfirm(!showConfirm)}
+                aria-label={showConfirm ? "Hide password" : "Show password"}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
-                tabIndex={-1}
               >
-                {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {showConfirm ? (
+                  <EyeOff aria-hidden="true" focusable="false" className="h-4 w-4" />
+                ) : (
+                  <Eye aria-hidden="true" focusable="false" className="h-4 w-4" />
+                )}
               </button>
             </div>
             {errors.confirm_password && (
-              <p className="text-sm text-destructive">{errors.confirm_password.message}</p>
+              <p id="confirm-password-error" role="alert" className="text-sm text-destructive">
+                {errors.confirm_password.message}
+              </p>
             )}
           </div>
 

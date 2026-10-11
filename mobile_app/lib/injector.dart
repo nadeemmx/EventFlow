@@ -66,7 +66,13 @@ Future<void> initializeDependencies() async {
 
   // Auth
   sl.registerLazySingleton<AuthRemoteDataSource>(() => AuthRemoteDataSource(apiClient: sl()));
-  sl.registerLazySingleton<AuthRepository>(() => AuthRepository(remoteDataSource: sl(), tokenService: sl(), guestSessionService: sl()));
+  sl.registerLazySingleton<AuthRepository>(() => AuthRepository(
+        remoteDataSource: sl(),
+        tokenService: sl(),
+        guestSessionService: sl(),
+        storageService: sl(),
+        notificationService: sl(),
+      ));
   sl.registerFactory<AuthBloc>(() => AuthBloc(authRepository: sl(), tokenService: sl()));
 
   // Dashboard

@@ -1,25 +1,44 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Menu, X } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 
 const navLinks = [
   { label: "Features", href: "#features" },
   { label: "Pricing", href: "#pricing" },
-  { label: "Customers", href: "#testimonials" },
+  { label: "Why EventFlow", href: "#testimonials" },
   { label: "FAQ", href: "#faq" },
 ]
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const toggleRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLElement>(null)
+  const wasOpen = useRef(false)
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20)
     window.addEventListener("scroll", onScroll, { passive: true })
     return () => window.removeEventListener("scroll", onScroll)
   }, [])
+
+  useEffect(() => {
+    if (mobileOpen) {
+      wasOpen.current = true
+      menuRef.current?.querySelector<HTMLAnchorElement>("a")?.focus()
+      const onKeyDown = (e: KeyboardEvent) => {
+        if (e.key === "Escape") setMobileOpen(false)
+      }
+      window.addEventListener("keydown", onKeyDown)
+      return () => window.removeEventListener("keydown", onKeyDown)
+    }
+    if (wasOpen.current) {
+      wasOpen.current = false
+      toggleRef.current?.focus()
+    }
+  }, [mobileOpen])
 
   return (
     <header
@@ -29,14 +48,14 @@ export default function Navbar() {
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-14 items-center justify-between">
-          <a href="#" className="flex items-center gap-2">
+          <a href="/" className="flex items-center gap-2">
             <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-amber-500 text-slate-900 font-bold text-xs">
               EF
             </div>
             <span className="font-bold text-base tracking-tight">EventFlow</span>
           </a>
 
-          <nav className="hidden md:flex items-center gap-7">
+          <nav className="hidden md:flex items-center gap-7" aria-label="Primary">
             {navLinks.map((link) => (
               <a
                 key={link.href}
@@ -56,17 +75,21 @@ export default function Navbar() {
               Sign In
             </a>
             <a
-              href="/login"
+              href="/signup"
               className="inline-flex items-center justify-center rounded-lg bg-amber-500 px-4 py-1.5 text-sm font-semibold text-slate-900 hover:bg-amber-600 transition-all"
             >
-              Start Free Trial
+              Create your account
             </a>
           </div>
 
           <button
+            ref={toggleRef}
+            type="button"
             className="md:hidden cursor-pointer p-2 text-slate-600 hover:text-slate-900"
             onClick={() => setMobileOpen(!mobileOpen)}
             aria-label="Toggle menu"
+            aria-expanded={mobileOpen}
+            aria-controls="mobile-menu"
           >
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
@@ -75,7 +98,10 @@ export default function Navbar() {
 
       <AnimatePresence>
         {mobileOpen && (
-          <motion.div
+          <motion.nav
+            id="mobile-menu"
+            aria-label="Mobile navigation"
+            ref={menuRef}
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
@@ -100,14 +126,14 @@ export default function Navbar() {
                   Sign In
                 </a>
                 <a
-                  href="/login"
+                  href="/signup"
                   className="text-center rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-semibold text-slate-900 hover:bg-amber-600 transition-all"
                 >
-                  Start Free Trial
+                  Create your account
                 </a>
               </div>
             </div>
-          </motion.div>
+          </motion.nav>
         )}
       </AnimatePresence>
     </header>

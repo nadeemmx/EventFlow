@@ -38,19 +38,20 @@ export default function CTA() {
         <h2 className="cta-el text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white mb-4">
           Ready to Scale Your
           <br />
-          <span className="text-gradient">Venue Business?</span>
+          <span className="text-gradient-dark">Venue Business?</span>
         </h2>
 
         <p className="cta-el text-sm sm:text-base text-slate-400 max-w-md mx-auto mb-8 leading-relaxed">
-          Join 500+ venues already using EventFlow to streamline operations, increase revenue, and deliver unforgettable events.
+          Bring bookings, invoices, payments, and customers into one place, and spend less time
+          chasing spreadsheets.
         </p>
 
         <div className="cta-el flex flex-col sm:flex-row items-center justify-center gap-3">
           <a
-            href="/login"
+            href="/signup"
             className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-7 py-3.5 text-base font-semibold text-slate-900 hover:bg-amber-600 transition-all hover:shadow-xl hover:shadow-amber-500/30"
           >
-            Start Free Trial
+            Create your account
             <ArrowRight className="h-4 w-4" />
           </a>
           <a
@@ -63,7 +64,7 @@ export default function CTA() {
         </div>
 
         <p className="cta-el text-xs text-slate-500 mt-6">
-          No credit card required. 14-day free trial.
+          No credit card required to sign up.
         </p>
       </div>
     </section>

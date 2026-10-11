@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { LoadingState } from "@/components/common/LoadingState"
 import { ErrorState } from "@/components/common/ErrorState"
 import { useToast } from "@/components/ui/toast"
-import { getUsers, createUser, updateUser, deleteUser, activateUser, deactivateUser, getRoles } from "@/services/settings.service"
+import { getUsers, createUser, updateUser, deleteUser, activateUser, deactivateUser, getRoles, type PaginatedUsersResponse } from "@/services/settings.service"
 import type { SettingsUser, RoleChoice } from "@/types/settings"
 import { Plus, Pencil, Trash2, Ban, CheckCircle } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -52,7 +52,7 @@ export default function UserManagementTab() {
     setError(null)
     try {
       const [usersRes, rolesRes] = await Promise.all([getUsers(), getRoles()])
-      if (usersRes.success) setUsers(usersRes.data)
+      if (usersRes.success) setUsers(usersRes.data.results)
       else setError(usersRes.message)
       if (rolesRes.success) setRoles(rolesRes.data)
     } catch (err: any) {
@@ -246,14 +246,24 @@ export default function UserManagementTab() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(user)} title="Edit">
-                        <Pencil className="h-4 w-4" />
+                      <Button variant="ghost" size="icon" aria-label="Edit user" onClick={() => openEdit(user)} title="Edit">
+                        <Pencil aria-hidden="true" focusable="false" className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleToggleActive(user)} title={user.is_active ? "Deactivate" : "Activate"}>
-                        {user.is_active ? <Ban className="h-4 w-4 text-amber-500" /> : <CheckCircle className="h-4 w-4 text-green-500" />}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={user.is_active ? "Deactivate user" : "Activate user"}
+                        onClick={() => handleToggleActive(user)}
+                        title={user.is_active ? "Deactivate" : "Activate"}
+                      >
+                        {user.is_active ? (
+                          <Ban aria-hidden="true" focusable="false" className="h-4 w-4 text-amber-500" />
+                        ) : (
+                          <CheckCircle aria-hidden="true" focusable="false" className="h-4 w-4 text-green-500" />
+                        )}
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete(user)} title="Delete">
-                        <Trash2 className="h-4 w-4 text-destructive" />
+                      <Button variant="ghost" size="icon" aria-label="Delete user" onClick={() => handleDelete(user)} title="Delete">
+                        <Trash2 aria-hidden="true" focusable="false" className="h-4 w-4 text-destructive" />
                       </Button>
                     </div>
                   </TableCell>

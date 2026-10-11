@@ -28,9 +28,9 @@ class NotificationService(BaseService):
             status=NotificationStatus.PENDING,
         )
         if channel == NotificationChannel.EMAIL:
-            result = self._send_email(user, title, message)
+            result = self._send_email(user, title, message, tenant=tenant)
         elif channel == NotificationChannel.WHATSAPP:
-            result = self._send_whatsapp(user, message)
+            result = self._send_whatsapp(user, message, tenant=tenant)
         else:
             result = None
             notification.status = NotificationStatus.SENT
@@ -55,21 +55,24 @@ class NotificationService(BaseService):
                 )
         return booking
 
-    def _send_email(self, user, subject, message):
+    def _send_email(self, user, subject, message, tenant=None):
         from apps.settings.models import EmailSettings
         if not user or not user.email:
             logger.warning("No email address for user %s", user)
             return None
         email_settings = None
-        if self.tenant:
-            email_settings = EmailSettings.objects.filter(tenant=self.tenant, is_active=True).first()
+        scope_tenant = tenant or self.tenant
+        if scope_tenant:
+            email_settings = EmailSettings.objects.filter(tenant=scope_tenant, is_active=True).first()
         from_email = None
         if email_settings:
             from_email = email_settings.from_email
         return self.email_provider.send_email(to=user.email, subject=subject, body=message, from_email=from_email)
 
-    def _send_whatsapp(self, user, message):
+    def _send_whatsapp(self, user, message, tenant=None):
         if not user or not user.mobile:
             logger.warning("No mobile number for user %s", user)
             return None
-        return self.whatsapp_provider.send_whatsapp(to=user.mobile, message=message)
+        return self.whatsapp_provider.send_whatsapp(
+            to=user.mobile, message=message, tenant=tenant or self.tenant
+        )

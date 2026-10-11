@@ -3,12 +3,24 @@
 import { useEffect, useRef } from "react"
 import { gsap } from "gsap"
 import { ScrollTrigger } from "gsap/ScrollTrigger"
+import {
+  Building2,
+  CalendarCheck,
+  CreditCard,
+  Shield,
+  Zap,
+  Phone,
+} from "lucide-react"
 
 gsap.registerPlugin(ScrollTrigger)
 
-const logos = [
-  "Grand Palace", "Skyline", "Emerald Gardens", "Royal Oak",
-  "Gold Crest", "Silver Sands", "Crystal Hall", "The Legacy",
+const trustItems = [
+  { icon: Building2, label: "Built for Event Venues" },
+  { icon: CalendarCheck, label: "Bookings, Leads & Invoices" },
+  { icon: CreditCard, label: "Razorpay Payments" },
+  { icon: Shield, label: "Role-Based Access Control" },
+  { icon: Zap, label: "Email & WhatsApp Alerts" },
+  { icon: Phone, label: "Support by Email" },
 ]
 
 export default function TrustedBy() {
@@ -16,7 +28,7 @@ export default function TrustedBy() {
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      gsap.from(sectionRef.current!.querySelectorAll(".logo-item"), {
+      gsap.from(sectionRef.current!.querySelectorAll(".trust-item"), {
         y: 20,
         opacity: 0,
         duration: 0.5,
@@ -35,17 +47,21 @@ export default function TrustedBy() {
     <section ref={sectionRef} className="py-12 border-y border-slate-100 bg-slate-50/50">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <p className="text-xs font-medium text-slate-500 uppercase tracking-[0.12em] text-center mb-6">
-          Trusted by event venues nationwide
+          Designed for modern venue businesses
         </p>
-        <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-3">
-          {logos.map((name) => (
-            <div
-              key={name}
-              className="logo-item text-sm sm:text-base font-bold tracking-tight text-slate-300"
-            >
-              {name}
-            </div>
-          ))}
+        <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
+          {trustItems.map((item) => {
+            const Icon = item.icon
+            return (
+              <div
+                key={item.label}
+                className="trust-item flex items-center gap-2 text-sm font-medium text-slate-500"
+              >
+                <Icon className="h-4 w-4 text-amber-500/60" />
+                {item.label}
+              </div>
+            )
+          })}
         </div>
       </div>
     </section>

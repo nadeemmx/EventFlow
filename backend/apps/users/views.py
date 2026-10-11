@@ -38,6 +38,31 @@ class UserViewSet(viewsets.ModelViewSet):
         service = UserService(tenant, self.request.user)
         service.update_user(serializer.instance.id, serializer.validated_data)
 
+    def destroy(self, request, *args, **kwargs):
+        """DELETE is irreversible, so it must name its target.
+
+        The inherited ``ModelViewSet.destroy`` hard-deleted whoever the URL
+        pointed at with no guard and no audit row — an automated RBAC sweep
+        issued ``DELETE /users/1/`` and destroyed the Owner fixture
+        (QA-TEST-REPORT-ROLES.md F-4). Requiring the caller to restate the
+        account's email makes a blind sweep fail with a 400 instead of
+        removing a person.
+        """
+        instance = self.get_object()
+        confirm = request.query_params.get("confirm") or request.data.get("confirm")
+        if not confirm or confirm.strip().lower() != instance.email.lower():
+            return error(
+                "Deletion is irreversible. Re-send with confirm set to the "
+                "email of the account to delete.",
+                status=400,
+            )
+        service = UserService(request.tenant, request.user)
+        try:
+            service.delete_user(instance.id)
+        except ValidationException as e:
+            return error(e.message)
+        return ok(None, "User deleted")
+
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)

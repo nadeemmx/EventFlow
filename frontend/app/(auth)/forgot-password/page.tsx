@@ -88,7 +88,10 @@ export default function ForgotPasswordPage() {
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {error && (
-            <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive text-center">
+            <div
+              role="alert"
+              className="rounded-md bg-destructive/10 p-3 text-sm text-destructive text-center"
+            >
               {error}
             </div>
           )}
@@ -100,10 +103,14 @@ export default function ForgotPasswordPage() {
               type="email"
               placeholder="you@example.com"
               autoComplete="email"
+              aria-invalid={errors.email ? true : undefined}
+              aria-describedby={errors.email ? "email-error" : undefined}
               {...register("email")}
             />
             {errors.email && (
-              <p className="text-sm text-destructive">{errors.email.message}</p>
+              <p id="email-error" role="alert" className="text-sm text-destructive">
+                {errors.email.message}
+              </p>
             )}
           </div>
 

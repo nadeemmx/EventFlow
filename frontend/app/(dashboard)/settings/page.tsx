@@ -1,7 +1,11 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { Building2 } from "lucide-react"
 import { PageHeader } from "@/components/common/PageHeader"
+import { EmptyState } from "@/components/common/EmptyState"
+import { useAuth } from "@/stores/auth-context"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import OrganizationTab from "./tabs/OrganizationTab"
 import ProfileTab from "./tabs/ProfileTab"
@@ -35,6 +39,22 @@ const TABS = [
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("organization")
+  const { user, loading } = useAuth()
+  const router = useRouter()
+
+  if (!loading && user?.role === "SUPER_ADMIN") {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Settings" description="Manage your account, organization, and application settings" />
+        <EmptyState
+          icon={Building2}
+          title="Settings are scoped to a venue tenant"
+          description="Organization, profile, payment, notification and branding settings belong to each venue owner account, so they are not available on a platform administrator login. Manage tenants and their venues from Venue Owners."
+          action={{ label: "Go to Venue Owners", onClick: () => router.push("/admin/tenants") }}
+        />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">

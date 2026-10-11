@@ -43,17 +43,23 @@ class NotificationService {
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    // request*Permission must stay false so iOS does not show the system
+    // prompt during cold start (before any UI). The prompt is raised from a
+    // user-facing opt-in point via [requestPermission].
     const iosSettings = DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
     );
     await _localNotifications.initialize(
       const InitializationSettings(android: androidSettings, iOS: iosSettings),
       onDidReceiveNotificationResponse: _onNotificationTap,
     );
 
-    await _requestPermissions();
+    // The OS permission prompt is intentionally NOT requested here: cold start
+    // runs before any UI can explain why notifications are wanted. It is
+    // requested from a user-facing opt-in point instead — see
+    // [requestPermission] (onboarding completion and Settings).
     await _getToken();
     _setupForegroundHandler();
     _setupTapHandler();
@@ -74,6 +80,30 @@ class NotificationService {
       sound: true,
       provisional: false,
     );
+  }
+
+  /// Asks the OS for push permission.
+  ///
+  /// This must only be called from a user-facing opt-in point (onboarding
+  /// completion or the Settings screen) so the user sees a rationale first —
+  /// never from [initialize] on cold start.
+  ///
+  /// Returns true when the user granted (or provisionally granted) permission.
+  Future<bool> requestPermission() async {
+    try {
+      await _requestPermissions();
+      final settings = await _messaging.getNotificationSettings();
+      final status = settings.authorizationStatus;
+      final granted = status == AuthorizationStatus.authorized ||
+          status == AuthorizationStatus.provisional;
+      if (granted) {
+        await _getToken();
+      }
+      return granted;
+    } catch (_) {
+      // Firebase may be unavailable (e.g. missing google-services config).
+      return false;
+    }
   }
 
   Future<void> _getToken() async {

@@ -30,13 +30,13 @@ import {
 import { useToast } from "@/components/ui/toast"
 
 const LEAD_SOURCE_OPTIONS = [
-  "REFERRAL",
   "WEBSITE",
-  "SOCIAL_MEDIA",
+  "GOOGLE",
+  "FACEBOOK",
+  "INSTAGRAM",
+  "WHATSAPP",
   "WALK_IN",
-  "PHONE_INQUIRY",
-  "EVENT",
-  "OTHER",
+  "REFERRAL",
 ] as const
 
 export default function LeadsPage() {
@@ -148,18 +148,20 @@ export default function LeadsPage() {
           <Button
             variant="ghost"
             size="icon"
+            aria-label="View lead"
             className="h-8 w-8 cursor-pointer"
             onClick={(e) => {
               e.stopPropagation()
               router.push(`/leads/${item.id as number}`)
             }}
           >
-            <Eye className="h-4 w-4" />
+            <Eye aria-hidden="true" focusable="false" className="h-4 w-4" />
           </Button>
           {canConvert(item.lead_status as string) && (
             <Button
               variant="ghost"
               size="icon"
+              aria-label="Convert lead to booking"
               className="h-8 w-8 text-success hover:text-success cursor-pointer"
               onClick={(e) => {
                 e.stopPropagation()
@@ -167,19 +169,20 @@ export default function LeadsPage() {
               }}
               title="Convert to Booking"
             >
-              <ArrowRight className="h-4 w-4" />
+              <ArrowRight aria-hidden="true" focusable="false" className="h-4 w-4" />
             </Button>
           )}
           <Button
             variant="ghost"
             size="icon"
+            aria-label="Delete lead"
             className="h-8 w-8 text-destructive hover:text-destructive cursor-pointer"
             onClick={(e) => {
               e.stopPropagation()
               setDeleteId(item.id as number)
             }}
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash2 aria-hidden="true" focusable="false" className="h-4 w-4" />
           </Button>
         </div>
       ),

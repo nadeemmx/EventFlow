@@ -125,18 +125,20 @@ export default function PaymentsPage() {
           <Button
             variant="ghost"
             size="sm"
+            aria-label="View payment"
             className="cursor-pointer"
             onClick={(e) => {
               e.stopPropagation()
               router.push(`/payments/${item.id}`)
             }}
           >
-            <Eye className="h-4 w-4" />
+            <Eye aria-hidden="true" focusable="false" className="h-4 w-4" />
           </Button>
           {item.payment_type === "PAYMENT" && (
             <Button
               variant="ghost"
               size="sm"
+              aria-label="Download payment receipt"
               className="cursor-pointer"
               disabled={downloadingReceiptId === item.id}
               onClick={(e) => {
@@ -144,13 +146,14 @@ export default function PaymentsPage() {
                 handleDownloadReceipt(item.id)
               }}
             >
-              <Download className="h-4 w-4" />
+              <Download aria-hidden="true" focusable="false" className="h-4 w-4" />
             </Button>
           )}
           {item.payment_type === "PAYMENT" && (
             <Button
               variant="ghost"
               size="sm"
+              aria-label="Refund payment"
               className="cursor-pointer text-destructive"
               disabled={refundingId === item.id}
               onClick={(e) => {
@@ -158,7 +161,7 @@ export default function PaymentsPage() {
                 handleRefund(item.id)
               }}
             >
-              <ArrowUpFromLine className="h-4 w-4" />
+              <ArrowUpFromLine aria-hidden="true" focusable="false" className="h-4 w-4" />
             </Button>
           )}
         </div>

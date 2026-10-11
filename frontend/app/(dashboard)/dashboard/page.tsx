@@ -1,6 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
+import { Suspense } from "react"
 import {
   Calendar,
   CalendarCheck,
@@ -48,7 +49,7 @@ const quickActions = [
   },
 ]
 
-export default function DashboardPage() {
+function DashboardContent() {
   const router = useRouter()
 
   const { data, isLoading, isError, error, refetch } = useDashboardSummary()
@@ -117,13 +118,13 @@ export default function DashboardPage() {
                   onClick={() => router.push(action.href)}
                 >
                   <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-amber-500/10 text-amber-600 shrink-0">
-                    <action.icon className="h-4 w-4" />
+                    <action.icon aria-hidden="true" focusable="false" className="h-4 w-4" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium">{action.title}</p>
                     <p className="text-xs text-muted-foreground">{action.description}</p>
                   </div>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />
+                  <ArrowRight aria-hidden="true" focusable="false" className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />
                 </button>
               ))}
             </div>
@@ -162,8 +163,18 @@ export default function DashboardPage() {
                 {recentBookings.map((booking) => (
                   <div
                     key={booking.id}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`View booking ${booking.booking_number}`}
                     className="flex items-center justify-between py-2 border-b last:border-0 cursor-pointer hover:bg-slate-100 rounded px-2 -mx-2 transition-colors"
                     onClick={() => router.push(`/bookings/${booking.id}`)}
+                    onKeyDown={(e) => {
+                      if (e.target !== e.currentTarget) return
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault()
+                        router.push(`/bookings/${booking.id}`)
+                      }
+                    }}
                   >
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium truncate">{booking.booking_number}</p>
@@ -178,5 +189,19 @@ export default function DashboardPage() {
         </Card>
       </div>
     </div>
+  )
+}
+
+export const dynamic = 'force-dynamic'
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-amber-500 border-t-transparent" />
+      </div>
+    }>
+      <DashboardContent />
+    </Suspense>
   )
 }

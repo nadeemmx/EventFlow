@@ -22,7 +22,7 @@ class RequestLoggingMiddleware:
             "path": request.path,
             "status": response.status_code,
             "duration_ms": round(duration * 1000, 2),
-            "user": str(request.user) if hasattr(request, "user") and request.user.is_authenticated else "anonymous",
+            "user": str(request.user.id) if hasattr(request, "user") and request.user.is_authenticated else "anonymous",
         }
 
         logger = logging.getLogger("api")

@@ -2,9 +2,10 @@
 
 import { Bell } from "lucide-react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,25 +14,35 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-
-const notifications = 3
+import { useAuth } from "@/stores/auth-context"
 
 export function UserNav() {
+  const router = useRouter()
+  const { user, logout } = useAuth()
+
+  const fullName = user?.full_name || "EventFlow User"
+  const email = user?.email || ""
+  const initials = fullName
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2)
+
+  const handleLogout = async () => {
+    await logout()
+    router.replace("/login")
+  }
+
   return (
     <div className="flex items-center gap-2">
-      <Button
-        variant="ghost"
-        size="icon"
-        className="relative cursor-pointer"
+      <Link
+        href="/notifications"
+        className="relative inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent"
         aria-label="Notifications"
       >
         <Bell className="h-5 w-5" />
-        {notifications > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-medium text-destructive-foreground">
-            {notifications}
-          </span>
-        )}
-      </Button>
+      </Link>
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -41,18 +52,17 @@ export function UserNav() {
             className="rounded-full h-8 w-8 cursor-pointer"
           >
             <Avatar className="h-8 w-8">
-              <AvatarImage src="/avatars/user.jpg" alt="User" />
-              <AvatarFallback className="bg-amber-500 text-slate-900">AD</AvatarFallback>
+              <AvatarFallback className="bg-amber-500 text-slate-900">{initials}</AvatarFallback>
             </Avatar>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-56" align="end" sideOffset={8}>
           <DropdownMenuLabel className="font-normal">
             <div className="flex flex-col space-y-1">
-              <p className="text-sm font-medium leading-none">Admin User</p>
-              <p className="text-xs leading-none text-muted-foreground">
-                admin@eventflow.com
-              </p>
+              <p className="text-sm font-medium leading-none">{fullName}</p>
+              {email && (
+                <p className="text-xs leading-none text-muted-foreground">{email}</p>
+              )}
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
@@ -67,7 +77,10 @@ export function UserNav() {
             </Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem className="text-destructive focus:text-destructive cursor-pointer">
+          <DropdownMenuItem
+            className="text-destructive focus:text-destructive cursor-pointer"
+            onSelect={handleLogout}
+          >
             Logout
           </DropdownMenuItem>
         </DropdownMenuContent>

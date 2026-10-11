@@ -18,7 +18,9 @@ export const invoicesService = {
   },
 
   update: async (id: number, data: Partial<InvoiceFormData>) => {
-    const res = await apiClient.patch<ApiResponse<Invoice>>(`/invoices/${id}/`, data);
+    const { booking_id, ...rest } = data;
+    const payload = booking_id !== undefined ? { ...rest, booking: booking_id } : rest;
+    const res = await apiClient.patch<ApiResponse<Invoice>>(`/invoices/${id}/`, payload);
     return res.data;
   },
 

@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     "apps.reports",
     "apps.settings",
     "apps.contracts",
+    "apps.privacy",
 ]
 
 MIDDLEWARE = [
@@ -161,6 +162,8 @@ REST_FRAMEWORK = {
         "password_reset": "5/minute",
         "token_refresh": "30/minute",
         "password_change": "10/minute",
+        "privacy_request": "5/hour",
+        "contact": "10/hour",
     },
 }
 

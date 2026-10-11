@@ -2,8 +2,8 @@ export default function PageCTA({
   title,
   highlight,
   description,
-  buttonText = "Start Free Trial",
-  buttonHref = "/login",
+  buttonText = "Create Your Account",
+  buttonHref = "/signup",
 }: {
   title: string
   highlight: string
@@ -21,7 +21,7 @@ export default function PageCTA({
         <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white mb-4">
           {title}{" "}
           <br />
-          <span className="text-gradient">{highlight}</span>
+          <span className="text-gradient-dark">{highlight}</span>
         </h2>
         <p className="text-sm sm:text-base text-slate-400 max-w-md mx-auto mb-8 leading-relaxed">
           {description}

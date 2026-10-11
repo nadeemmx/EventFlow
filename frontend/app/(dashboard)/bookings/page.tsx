@@ -155,19 +155,37 @@ export default function BookingsPage() {
         const canConfirm = booking.status === "TENTATIVE"
         const canCancel = !["CANCELLED", "COMPLETED", "REFUNDED"].includes(booking.status)
         return (
-          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="flex items-center gap-1"
+            role="button"
+            tabIndex={0}
+            aria-label="Booking actions"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault()
+                e.stopPropagation()
+              }
+            }}
+          >
             <Button
               variant="ghost"
               size="icon"
+              aria-label="View booking"
               className="cursor-pointer"
               onClick={() => router.push(`/bookings/${booking.id}`)}
             >
-              <Eye className="h-4 w-4" />
+              <Eye aria-hidden="true" focusable="false" className="h-4 w-4" />
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="cursor-pointer">
-                  <MoreHorizontal className="h-4 w-4" />
+                <Button
+                  variant="ghost"
+                  size="icon"
+            aria-label="Booking row actions"
+                  className="cursor-pointer"
+                >
+                  <MoreHorizontal aria-hidden="true" focusable="false" className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">

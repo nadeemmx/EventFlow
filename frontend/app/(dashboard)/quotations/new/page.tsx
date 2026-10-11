@@ -392,11 +392,12 @@ export default function NewQuotationPage() {
                                     type="button"
                                     variant="ghost"
                                     size="icon"
+                                    aria-label="Remove item"
                                     className="h-8 w-8 text-destructive hover:text-destructive cursor-pointer"
                                     onClick={() => remove(index)}
                                     disabled={fields.length <= 1}
                                   >
-                                    <Trash2 className="h-4 w-4" />
+                                    <Trash2 aria-hidden="true" focusable="false" className="h-4 w-4" />
                                   </Button>
                                 </TableCell>
                               </TableRow>
@@ -458,10 +459,14 @@ export default function NewQuotationPage() {
               <Input
                 id="full_name"
                 placeholder="John Doe"
+                aria-invalid={customerForm.formState.errors.full_name ? true : undefined}
+                aria-describedby={customerForm.formState.errors.full_name ? "customer-full_name-error" : undefined}
                 {...customerForm.register("full_name")}
               />
               {customerForm.formState.errors.full_name && (
-                <p className="text-sm text-destructive">{customerForm.formState.errors.full_name.message}</p>
+                <p id="customer-full_name-error" role="alert" className="text-sm text-destructive">
+                  {customerForm.formState.errors.full_name.message}
+                </p>
               )}
             </div>
             <div className="space-y-2">
@@ -469,10 +474,14 @@ export default function NewQuotationPage() {
               <Input
                 id="mobile"
                 placeholder="9876543210"
+                aria-invalid={customerForm.formState.errors.mobile ? true : undefined}
+                aria-describedby={customerForm.formState.errors.mobile ? "customer-mobile-error" : undefined}
                 {...customerForm.register("mobile")}
               />
               {customerForm.formState.errors.mobile && (
-                <p className="text-sm text-destructive">{customerForm.formState.errors.mobile.message}</p>
+                <p id="customer-mobile-error" role="alert" className="text-sm text-destructive">
+                  {customerForm.formState.errors.mobile.message}
+                </p>
               )}
             </div>
             <div className="space-y-2">
@@ -481,10 +490,14 @@ export default function NewQuotationPage() {
                 id="email"
                 type="email"
                 placeholder="john@example.com"
+                aria-invalid={customerForm.formState.errors.email ? true : undefined}
+                aria-describedby={customerForm.formState.errors.email ? "customer-email-error" : undefined}
                 {...customerForm.register("email")}
               />
               {customerForm.formState.errors.email && (
-                <p className="text-sm text-destructive">{customerForm.formState.errors.email.message}</p>
+                <p id="customer-email-error" role="alert" className="text-sm text-destructive">
+                  {customerForm.formState.errors.email.message}
+                </p>
               )}
             </div>
             <div className="space-y-2">

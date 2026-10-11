@@ -71,7 +71,9 @@ class CacheService:
         # 2) Backends without pattern support (LocMemCache, local Redis
         #    fallback): delete the keys this service knows about.
         with CacheService._lock:
-            keys = [k for k in CacheService._TRACKED_KEYS if k.startswith(pattern)]
+            # Sorted so invalidation order is deterministic regardless of
+            # set iteration order (string hashing is randomised per process).
+            keys = sorted(k for k in CacheService._TRACKED_KEYS if k.startswith(pattern))
             CacheService._TRACKED_KEYS.difference_update(keys)
         for key in keys:
             try:

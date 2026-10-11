@@ -1,5 +1,5 @@
 export const BOOKING_STATUSES = [
-  "DRAFT", "TENTATIVE", "CONFIRMED", "COMPLETED", "CANCELLED", "REFUNDED",
+  "DRAFT", "TENTATIVE", "CONFIRMED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "REFUNDED",
 ] as const;
 
 export const CONTRACT_STATUSES = ["DRAFT", "SENT", "SIGNED", "EXPIRED", "CANCELLED"] as const;
@@ -8,7 +8,7 @@ export const QUOTATION_STATUSES = ["DRAFT", "SENT", "ACCEPTED", "REJECTED", "EXP
 
 export const EVENT_TYPES = [
   "WEDDING", "RECEPTION", "WALIMA", "BIRTHDAY", "ENGAGEMENT",
-  "CORPORATE_EVENT", "CONFERENCE", "EXHIBITION", "RELIGIOUS_EVENT", "CUSTOM_EVENT",
+  "CORPORATE", "CONFERENCE", "EXHIBITION", "RELIGIOUS", "CUSTOM",
 ] as const;
 
 export const USER_ROLES = [
@@ -46,29 +46,31 @@ export const STATUS_COLORS: Record<string, string> = {
   LOW_STOCK: "bg-amber-100 text-amber-800",
   OUT_OF_STOCK: "bg-destructive/10 text-destructive",
   TODO: "bg-warm-200 text-jetBlack-600",
+  OPEN: "bg-warm-200 text-jetBlack-600",
   IN_PROGRESS: "bg-blue-100 text-blue-800",
   DONE: "bg-success/10 text-success",
   PENDING: "bg-gold-100 text-gold-800",
   HIGH: "bg-destructive/10 text-destructive",
   MEDIUM: "bg-amber-100 text-amber-800",
   LOW: "bg-success/10 text-success",
+  URGENT: "bg-destructive/10 text-destructive",
 };
 
 export const INVENTORY_CATEGORIES = [
-  "FURNITURE", "DECORATION", "LIGHTING", "CATERING", "AUDIO_VISUAL", "OTHER",
+  "CHAIRS", "TABLES", "STAGE", "LIGHTS", "GENERATOR", "SOUND_SYSTEM", "DECORATION",
 ] as const;
 
 export const STAFF_ROLES = [
   "MANAGER", "COORDINATOR", "CHEF", "SERVER", "SECURITY", "CLEANER", "OTHER",
 ] as const;
 
-export const TASK_PRIORITIES = ["HIGH", "MEDIUM", "LOW"] as const;
+export const TASK_PRIORITIES = ["HIGH", "MEDIUM", "LOW", "URGENT"] as const;
 
-export const TASK_STATUSES = ["TODO", "IN_PROGRESS", "DONE", "CANCELLED"] as const;
+export const TASK_STATUSES = ["OPEN", "IN_PROGRESS", "COMPLETED", "CANCELLED"] as const;
 
 export const VENDOR_SERVICE_TYPES = [
-  "CATERING", "DECORATION", "PHOTOGRAPHY", "ENTERTAINMENT", "LIGHTING",
-  "SOUND", "SECURITY", "TRANSPORT", "FLORIST", "OTHER",
+  "CATERER", "DECORATOR", "DJ", "PHOTOGRAPHER", "VIDEOGRAPHER", "SECURITY",
+  "CLEANING", "OTHER",
 ] as const;
 
 export const NOTIFICATION_TYPES = [

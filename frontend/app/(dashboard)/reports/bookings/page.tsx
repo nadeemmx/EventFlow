@@ -48,8 +48,9 @@ export default function BookingReportPage() {
 
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
         <div className="space-y-1">
-          <label className="text-xs text-muted-foreground">Start Date</label>
+          <label htmlFor="report-start-date" className="text-xs text-muted-foreground">Start Date</label>
           <Input
+            id="report-start-date"
             type="date"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
@@ -57,8 +58,9 @@ export default function BookingReportPage() {
           />
         </div>
         <div className="space-y-1">
-          <label className="text-xs text-muted-foreground">End Date</label>
+          <label htmlFor="report-end-date" className="text-xs text-muted-foreground">End Date</label>
           <Input
+            id="report-end-date"
             type="date"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}

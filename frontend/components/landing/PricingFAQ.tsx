@@ -4,64 +4,74 @@ import { useState, useEffect, useRef } from "react"
 import { gsap } from "gsap"
 import { ScrollTrigger } from "gsap/ScrollTrigger"
 import { Check, ChevronDown } from "lucide-react"
+import BusinessField from "@/components/legal/BusinessField"
 
 gsap.registerPlugin(ScrollTrigger)
 
 const plans = [
   {
     name: "Starter",
-    price: "499",
-    description: "For small venues getting started",
+    price: "1,999",
+    description: "For single-venue operators getting started",
     features: [
-      "Up to 50 events per month",
-      "Basic CRM",
-      "Calendar management",
-      "Payment tracking",
-      "Email support",
+      "Up to 100 bookings per month",
+      "Lead CRM with email capture",
+      "Shared calendar view",
+      "Basic reports (bookings & revenue)",
+      "Email support within 24 hours",
+      "Up to 2 staff accounts",
+      "Payment gateway integration",
+      "Invoice generation",
     ],
-    cta: "Start Free Trial",
+    cta: "Start Free",
+    href: "/signup",
     popular: false,
   },
   {
     name: "Growth",
-    price: "1,499",
+    price: "3,999",
     description: "For growing venues with multiple teams",
     features: [
-      "Unlimited events",
-      "Advanced CRM & lead scoring",
-      "Calendar with auto-scheduling",
-      "Payment processing",
-      "Invoice generation",
-      "Reports & analytics",
-      "Staff management",
-      "Priority support",
+      "Bookings",
+      "Full CRM",
+      "Multi-venue calendar",
+      "Analytics & reports",
+      "Email support",
+      "Up to 15 staff accounts",
+      "WhatsApp notifications",
+      "Vendor & staff management",
+      "Custom invoice templates",
+      "API access",
     ],
-    cta: "Start Free Trial",
+    cta: "Start Free",
+    href: "/signup",
     popular: true,
   },
   {
     name: "Enterprise",
-    price: "4,999",
+    price: null,
     description: "For large venues and venue chains",
     features: [
       "Everything in Growth",
-      "Multi-venue management",
-      "Vendor management",
-      "Custom integrations",
-      "API access",
-      "Dedicated account manager",
-      "99.99% SLA",
-      "24/7 phone support",
+      "Multi-tenant architecture",
+      "Custom role-based access control",
+      "Team members",
     ],
     cta: "Contact Sales",
+    href: "/contact",
     popular: false,
   },
 ]
 
 const faqs = [
   {
-    q: "How does the free trial work?",
-    a: "Start your 14-day free trial with no credit card required. You get full access to all Growth features. No commitments, cancel anytime.",
+    q: "How does signing up work?",
+    a: (
+      <>
+        Create an account and start setting up your venue — no credit card required to sign up.
+        Trial and plan terms: <BusinessField label="Free trial terms" />.
+      </>
+    ),
   },
   {
     q: "Can I manage multiple venues?",
@@ -69,19 +79,19 @@ const faqs = [
   },
   {
     q: "What payment methods do you support?",
-    a: "We support all major payment methods including UPI, credit/debit cards, net banking, and bank transfers.",
+    a: "Online payments are collected through Razorpay — UPI, credit and debit cards, and net banking. You can also record manual payments such as cash, cheque, or bank transfer.",
   },
   {
     q: "How long does onboarding take?",
-    a: "Most venues are fully set up within a week. We provide guided onboarding, import tools, and dedicated support throughout.",
+    a: "You can sign up, add your venues, and start taking bookings yourself. If you would like a hand migrating existing data, contact us and we will help you through it.",
   },
   {
     q: "Can I customize invoices?",
-    a: "Yes. Add your logo, brand colors, and custom fields to invoices, receipts, and customer communications.",
+    a: "Yes. You can set an invoice number prefix, upload your logo, add footer text and payment terms, choose GST details, pick a template, and set the currency.",
   },
   {
     q: "Is my data secure?",
-    a: "Enterprise-grade security with AES-256 encryption, regular backups, and SOC 2 compliance.",
+    a: "Access uses JWT sessions, sensitive credentials are encrypted at rest with AES-256-GCM, and traffic is served over HTTPS/TLS. SOC 2 compliance is in progress — we do not claim to hold the certification yet.",
   },
 ]
 
@@ -128,11 +138,13 @@ export default function PricingFAQ() {
               <span className="text-gradient">Transparent</span> Pricing
             </h2>
             <p className="mt-3 text-slate-600 max-w-xl mx-auto">
-              No hidden fees. No surprise charges. Scale your plan as you grow.
+              Plan prices are shown in full below. Scale your plan as you grow.
             </p>
 
-            <div className="inline-flex items-center gap-2 mt-6 p-1 rounded-lg bg-slate-100">
+            <div className="inline-flex items-center gap-2 mt-6 p-1 rounded-lg bg-slate-100" role="group" aria-label="Billing period">
               <button
+                type="button"
+                aria-pressed={billing === "monthly"}
                 onClick={() => setBilling("monthly")}
                 className={`cursor-pointer px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
                   billing === "monthly"
@@ -143,6 +155,8 @@ export default function PricingFAQ() {
                 Monthly
               </button>
               <button
+                type="button"
+                aria-pressed={billing === "annual"}
                 onClick={() => setBilling("annual")}
                 className={`cursor-pointer px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
                   billing === "annual"
@@ -151,7 +165,7 @@ export default function PricingFAQ() {
                 }`}
               >
                 Annual{" "}
-                <span className="text-xs text-amber-600 font-semibold">Save 20%</span>
+                <span className="text-xs text-amber-700 font-semibold">Save 17%</span>
               </button>
             </div>
           </div>
@@ -171,7 +185,7 @@ export default function PricingFAQ() {
               >
                 {plan.popular && (
                   <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 inline-flex items-center rounded-full bg-amber-500 px-3 py-0.5 text-[10px] font-semibold text-slate-900">
-                    Most Popular
+                    Recommended
                   </div>
                 )}
 
@@ -181,14 +195,25 @@ export default function PricingFAQ() {
                 </p>
 
                 <div className="mb-4">
-                  <span className="text-2xl sm:text-3xl font-bold">₹{plan.price}</span>
-                  <span className="text-sm text-slate-500">
-                    /{billing === "monthly" ? "mo" : "mo, billed annually"}
-                  </span>
+                  {plan.price !== null ? (
+                    <>
+                      <span className="text-2xl sm:text-3xl font-bold">₹{plan.price}</span>
+                      <span className="text-sm text-slate-500">
+                        /{billing === "monthly" ? "mo" : "mo, billed annually"}
+                      </span>
+                      {billing === "annual" && (
+                        <p className="text-xs text-emerald-700 mt-1">
+                          ₹{parseInt(plan.price.replace(/,/g, "")) * 10}/yr — 2 months free
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <span className="text-2xl sm:text-3xl font-bold">Custom</span>
+                  )}
                 </div>
 
                 <a
-                  href="/login"
+                  href={plan.href}
                   className={`block text-center rounded-lg py-2.5 text-sm font-semibold transition-all ${
                     plan.popular
                       ? "bg-amber-500 text-slate-900 hover:bg-amber-600"
@@ -201,13 +226,34 @@ export default function PricingFAQ() {
                 <ul className="mt-4 space-y-2">
                   {plan.features.map((feature) => (
                     <li key={feature} className="flex items-start gap-2 text-xs sm:text-sm text-slate-600">
-                      <Check className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                      <Check className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" aria-hidden="true" focusable="false" />
                       {feature}
                     </li>
                   ))}
                 </ul>
               </div>
             ))}
+          </div>
+
+          <div className="mt-8 max-w-5xl mx-auto rounded-xl border border-slate-200 bg-white p-5 text-xs sm:text-sm text-slate-600 leading-relaxed">
+            <p className="font-semibold text-slate-900 mb-1">Billing notes</p>
+            <p>
+              Prices are in Indian Rupees (₹) and exclude taxes where applicable — see our{" "}
+              <a href="/terms-of-service/" className="underline text-slate-900">
+                Terms of Service
+              </a>{" "}
+              and{" "}
+              <a href="/refund-policy/" className="underline text-slate-900">
+                Refund Policy
+              </a>
+              . Annual billing is 10× the monthly price, charged upfront for the year (2 months
+              free). There is no setup fee. Payment processing for your bookings goes through
+              Razorpay and its fees are separate from your plan — see the{" "}
+              <a href="/terms-of-service/#payments" className="underline text-slate-900">
+                payments section
+              </a>{" "}
+              of our Terms.
+            </p>
           </div>
         </div>
       </section>
@@ -235,13 +281,15 @@ export default function PricingFAQ() {
                   aria-expanded={openFaq === i}
                 >
                   <span className={`text-sm font-medium pr-4 transition-colors ${
-                    openFaq === i ? "text-amber-600" : ""
+                    openFaq === i ? "text-amber-700" : ""
                   }`}>
                     {faq.q}
                   </span>
                   <ChevronDown
+                    aria-hidden="true"
+                    focusable="false"
                     className={`h-4 w-4 shrink-0 transition-all duration-300 ${
-                      openFaq === i ? "rotate-180 text-amber-600" : "text-slate-400"
+                      openFaq === i ? "rotate-180 text-amber-700" : "text-slate-500"
                     }`}
                   />
                 </button>

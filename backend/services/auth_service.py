@@ -1,3 +1,5 @@
+import logging
+
 from django.contrib.auth import authenticate
 from django.utils import timezone
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -8,6 +10,8 @@ from core.exceptions import ValidationException, ConflictException
 from core.utils import get_client_ip
 from core.choices import UserRole
 from core.brute_force import BruteForceProtection
+
+logger = logging.getLogger(__name__)
 
 
 class AuthService:
@@ -114,26 +118,58 @@ class AuthService:
             token = JWTRefreshToken(refresh_token)
             user_id = token.payload.get("user_id")
             user = self.user_repo.get_by_id(user_id)
+            if not user.is_active:
+                raise ValidationException("Account is deactivated")
+            if user.role != UserRole.SUPER_ADMIN:
+                tenant = user.tenant
+                if tenant and tenant.status not in ["ACTIVE", "TRIAL"]:
+                    raise ValidationException("Tenant account is inactive")
+            token.blacklist()
             new_refresh = JWTRefreshToken.for_user(user)
             return {
                 "access_token": str(new_refresh.access_token),
                 "refresh_token": str(new_refresh),
             }
+        except ValidationException:
+            raise
         except Exception:
             raise ValidationException("Invalid or expired refresh token")
 
-    def logout(self, user, refresh_token):
-        from rest_framework_simplejwt.tokens import RefreshToken as JWTRefreshToken
+    def logout(self, user, refresh_token, access_token=None):
+        from rest_framework_simplejwt.tokens import (
+            RefreshToken as JWTRefreshToken,
+        )
         try:
             token = JWTRefreshToken(refresh_token)
             token.blacklist()
         except Exception:
             raise ValidationException("Invalid refresh token")
+        # Blacklist the access token presented on this request too. Stateless
+        # JWT would otherwise keep it live for the rest of its 60-minute
+        # lifetime, so a stolen access token survived the user "logging out"
+        # (QA-TEST-REPORT-ROLES.md F-3). Only *this* token is revoked — a
+        # sibling session on another device is intentionally left alone.
+        if access_token:
+            self._blacklist_access_token(access_token)
         self.user_repo.delete_session(refresh_token)
         self.audit_repo.log(
             tenant=user.tenant, user=user,
             module="AUTH", action="LOGOUT",
         )
+
+    @staticmethod
+    def _blacklist_access_token(access_token):
+        from core.tokens import BlacklistCheckingAccessToken
+        try:
+            # AccessToken itself has no blacklist() — only RefreshToken mixes
+            # in BlacklistMixin — so go through the blacklist-aware subclass.
+            BlacklistCheckingAccessToken(access_token).blacklist()
+        except Exception:
+            # Never fail a logout because the access token could not be
+            # blacklisted (already expired, malformed, or already revoked).
+            # The refresh token above is the authoritative session end.
+            logger.warning(
+                "Could not blacklist access token on logout", exc_info=True)
 
     def change_password(self, user, current_password, new_password):
         if not user.check_password(current_password):

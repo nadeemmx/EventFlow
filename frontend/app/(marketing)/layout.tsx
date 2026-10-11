@@ -9,7 +9,9 @@ export default function MarketingLayout({
   return (
     <>
       <SiteHeader />
-      <main className="min-h-screen pt-14">{children}</main>
+      <main id="main-content" tabIndex={-1} className="min-h-screen pt-14">
+        {children}
+      </main>
       <Footer />
     </>
   )

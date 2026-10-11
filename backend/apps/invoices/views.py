@@ -39,9 +39,21 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["get"])
     def pdf(self, request, pk=None):
         invoice = self.get_object()
-        service = InvoiceService(request.tenant, request.user)
+        return self._invoice_pdf_response(invoice)
+
+    @action(detail=True, methods=["get"])
+    def download(self, request, pk=None):
+        invoice = self.get_object()
+        return self._invoice_pdf_response(invoice)
+
+    def _invoice_pdf_response(self, invoice):
+        service = InvoiceService(self.request.tenant, self.request.user)
         pdf_content = service.generate_pdf(invoice)
-        return HttpResponse(pdf_content, content_type="application/pdf", headers={"Content-Disposition": f"attachment; filename={invoice.invoice_number}.pdf"})
+        return HttpResponse(
+            pdf_content,
+            content_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename={invoice.invoice_number}.pdf"},
+        )
 
     @action(detail=True, methods=["post"])
     def email(self, request, pk=None):

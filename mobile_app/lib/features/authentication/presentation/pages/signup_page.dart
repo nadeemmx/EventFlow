@@ -1,8 +1,11 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:eventflow_app/core/config/app_config.dart';
 import 'package:eventflow_app/core/theme/app_colors.dart';
 import 'package:eventflow_app/core/theme/design_system.dart';
+import 'package:eventflow_app/core/utils/external_links.dart';
 import 'package:eventflow_app/core/utils/validators.dart';
 import 'package:eventflow_app/features/authentication/presentation/bloc/auth_bloc.dart';
 import 'package:eventflow_app/features/authentication/presentation/widgets/auth_text_field.dart';
@@ -15,6 +18,9 @@ class SignupPage extends StatefulWidget {
 }
 
 class _SignupPageState extends State<SignupPage> {
+  static const String _consentError =
+      'Please accept the Terms of Service and Privacy Policy and confirm you are at least 18 years old.';
+
   final _formKey = GlobalKey<FormState>();
   final _fullNameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -29,6 +35,15 @@ class _SignupPageState extends State<SignupPage> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
+  bool _consentAccepted = false;
+  bool _marketingOptIn = false;
+  bool _showConsentError = false;
+
+  late final TapGestureRecognizer _termsRecognizer = TapGestureRecognizer()
+    ..onTap = () => openExternalUrl(AppConfig.termsUrl);
+  late final TapGestureRecognizer _privacyRecognizer = TapGestureRecognizer()
+    ..onTap = () => openExternalUrl(AppConfig.privacyPolicyUrl);
+
   @override
   void dispose() {
     _fullNameController.dispose();
@@ -41,23 +56,45 @@ class _SignupPageState extends State<SignupPage> {
     _mobileFocus.dispose();
     _passwordFocus.dispose();
     _confirmPasswordFocus.dispose();
+    _termsRecognizer.dispose();
+    _privacyRecognizer.dispose();
     super.dispose();
   }
 
   void _onSignup() {
-    if (_formKey.currentState?.validate() ?? false) {
-      context.read<AuthBloc>().add(
-            RegisterRequested(
-              fullName: _fullNameController.text.trim(),
-              email: _emailController.text.trim(),
-              password: _passwordController.text,
-              confirmPassword: _confirmPasswordController.text,
-              mobile: _mobileController.text.trim().isEmpty
-                  ? null
-                  : _mobileController.text.trim(),
-            ),
-          );
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    if (!_consentAccepted) {
+      setState(() => _showConsentError = true);
+      return;
     }
+
+    context.read<AuthBloc>().add(
+          RegisterRequested(
+            fullName: _fullNameController.text.trim(),
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+            confirmPassword: _confirmPasswordController.text,
+            mobile: _mobileController.text.trim().isEmpty
+                ? null
+                : _mobileController.text.trim(),
+            termsAccepted: true,
+            privacyAccepted: true,
+            ageConfirmed: true,
+            marketingOptIn: _marketingOptIn,
+          ),
+        );
+  }
+
+  void _onConsentChanged(bool? value) {
+    setState(() {
+      _consentAccepted = value ?? false;
+      if (_consentAccepted) _showConsentError = false;
+    });
+  }
+
+  void _onMarketingChanged(bool? value) {
+    setState(() => _marketingOptIn = value ?? false);
   }
 
   @override
@@ -224,8 +261,101 @@ class _SignupPageState extends State<SignupPage> {
                     onSuffixTap: () => setState(
                         () => _obscureConfirmPassword = !_obscureConfirmPassword),
                   ),
+                  const SizedBox(height: DesignSystem.spacing4),
+                  // Consent: terms + privacy + age confirmation (required)
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        width: 48,
+                        height: 48,
+                        child: Checkbox(
+                          value: _consentAccepted,
+                          activeColor: AppColors.primary,
+                          onChanged: _onConsentChanged,
+                        ),
+                      ),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: DesignSystem.spacing3),
+                          child: Text.rich(
+                            TextSpan(
+                              text: 'I agree to the ',
+                              style: DesignSystem.bodySmall.copyWith(
+                                color: AppColors.textSecondary,
+                                height: 1.5,
+                              ),
+                              children: [
+                                TextSpan(
+                                  text: 'Terms of Service',
+                                  recognizer: _termsRecognizer,
+                                  style: DesignSystem.bodySmall.copyWith(
+                                    color: AppColors.primary,
+                                    height: 1.5,
+                                    fontWeight: FontWeight.w600,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                                const TextSpan(text: ' and '),
+                                TextSpan(
+                                  text: 'Privacy Policy',
+                                  recognizer: _privacyRecognizer,
+                                  style: DesignSystem.bodySmall.copyWith(
+                                    color: AppColors.primary,
+                                    height: 1.5,
+                                    fontWeight: FontWeight.w600,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                                const TextSpan(
+                                  text:
+                                      ', and confirm I am at least 18 years old.',
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (_showConsentError)
+                    Padding(
+                      padding: const EdgeInsets.only(
+                        left: DesignSystem.spacing6,
+                        top: DesignSystem.spacing1,
+                      ),
+                      child: Text(
+                        _consentError,
+                        style: DesignSystem.bodySmall.copyWith(
+                          color: AppColors.error,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                  // Marketing opt-in (optional, unchecked by default)
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 48,
+                        height: 48,
+                        child: Checkbox(
+                          value: _marketingOptIn,
+                          activeColor: AppColors.primary,
+                          onChanged: _onMarketingChanged,
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          'Email me product updates',
+                          style: DesignSystem.bodySmall.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: DesignSystem.spacing6),
-                  // Create Account button
                   BlocBuilder<AuthBloc, AuthState>(
                     builder: (context, state) {
                       final isLoading = state is AuthLoading;

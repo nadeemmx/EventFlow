@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:eventflow_app/core/config/app_config.dart';
 import 'package:eventflow_app/core/theme/app_colors.dart';
 import 'package:eventflow_app/core/theme/design_system.dart';
+import 'package:eventflow_app/core/utils/external_links.dart';
 import 'package:eventflow_app/core/utils/validators.dart';
 import 'package:eventflow_app/features/authentication/presentation/bloc/auth_bloc.dart';
 import 'package:eventflow_app/features/authentication/presentation/widgets/auth_text_field.dart';
@@ -282,10 +284,57 @@ class _LoginPageState extends State<LoginPage> {
                     ],
                   ),
                   const SizedBox(height: DesignSystem.spacing6),
+                  // Legal links
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _LegalLink(
+                        label: 'Privacy Policy',
+                        url: AppConfig.privacyPolicyUrl,
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: DesignSystem.spacing3,
+                        ),
+                        child: Text(
+                          '•',
+                          style: DesignSystem.bodySmall.copyWith(
+                            color: AppColors.textHint,
+                          ),
+                        ),
+                      ),
+                      _LegalLink(
+                        label: 'Terms',
+                        url: AppConfig.termsUrl,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: DesignSystem.spacing6),
                 ],
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LegalLink extends StatelessWidget {
+  final String label;
+  final String url;
+
+  const _LegalLink({required this.label, required this.url});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => openExternalUrl(url),
+      child: Text(
+        label,
+        style: DesignSystem.bodySmall.copyWith(
+          color: AppColors.primary,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );

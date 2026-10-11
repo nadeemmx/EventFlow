@@ -45,12 +45,15 @@ export const leadsService = {
   },
 
   create: async (data: LeadFormData) => {
-    const res = await apiClient.post<ApiResponse<Lead>>("/leads/", data);
+    const { customer_id, ...rest } = data;
+    const res = await apiClient.post<ApiResponse<Lead>>("/leads/", { ...rest, customer: customer_id });
     return res.data;
   },
 
   update: async (id: number, data: Partial<LeadFormData>) => {
-    const res = await apiClient.patch<ApiResponse<Lead>>(`/leads/${id}/`, data);
+    const { customer_id, ...rest } = data;
+    const payload = customer_id !== undefined ? { ...rest, customer: customer_id } : rest;
+    const res = await apiClient.patch<ApiResponse<Lead>>(`/leads/${id}/`, payload);
     return res.data;
   },
 

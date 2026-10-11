@@ -13,17 +13,19 @@ import Footer from "@/components/landing/Footer"
 
 export default function Home() {
   return (
-    <main className="relative">
+    <>
       <Navbar />
-      <Hero />
-      <TrustedBy />
-      <Features />
-      <Workflow />
-      <DashboardShowcase />
-      <Testimonials />
-      <PricingFAQ />
-      <CTA />
+      <main id="main-content" tabIndex={-1} className="relative">
+        <Hero />
+        <TrustedBy />
+        <Features />
+        <Workflow />
+        <DashboardShowcase />
+        <Testimonials />
+        <PricingFAQ />
+        <CTA />
+      </main>
       <Footer />
-    </main>
+    </>
   )
 }

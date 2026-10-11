@@ -160,21 +160,21 @@ export default function IntegrationsPage() {
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-8">
               <div className="text-xs font-mono text-slate-500 space-y-2">
-                <p className="text-slate-400">// Example: Create a booking via API</p>
+                <p className="text-slate-400">{"// Example: Create a booking via API"}</p>
                 <p><span className="text-amber-600">POST</span> <span className="text-slate-800">/api/v1/bookings</span></p>
                 <p className="text-slate-600">{`{`}</p>
-                <p className="pl-4">"venue_id": <span className="text-green-600">"v_abc123"</span>,</p>
-                <p className="pl-4">"customer_name": <span className="text-green-600">"Priya Mehta"</span>,</p>
-                <p className="pl-4">"event_date": <span className="text-green-600">"2026-08-15"</span>,</p>
-                <p className="pl-4">"event_type": <span className="text-green-600">"wedding"</span>,</p>
-                <p className="pl-4">"guest_count": <span className="text-green-600">250</span>,</p>
-                <p className="pl-4">"total_amount": <span className="text-green-600">450000</span></p>
+                <p className="pl-4">&quot;venue_id&quot;: <span className="text-green-600">&quot;v_abc123&quot;</span>,</p>
+                <p className="pl-4">&quot;customer_name&quot;: <span className="text-green-600">&quot;Priya Mehta&quot;</span>,</p>
+                <p className="pl-4">&quot;event_date&quot;: <span className="text-green-600">&quot;2026-08-15&quot;</span>,</p>
+                <p className="pl-4">&quot;event_type&quot;: <span className="text-green-600">&quot;wedding&quot;</span>,</p>
+                <p className="pl-4">&quot;guest_count&quot;: <span className="text-green-600">250</span>,</p>
+                <p className="pl-4">&quot;total_amount&quot;: <span className="text-green-600">450000</span></p>
                 <p className="text-slate-600">{`}`}</p>
-                <p className="mt-4 text-slate-400">// Response: 201 Created</p>
+                <p className="mt-4 text-slate-400">{"// Response: 201 Created"}</p>
                 <p className="text-slate-600">{`{`}</p>
-                <p className="pl-4">"id": <span className="text-green-600">"bk_xyz789"</span>,</p>
-                <p className="pl-4">"status": <span className="text-green-600">"confirmed"</span>,</p>
-                <p className="pl-4">"created_at": <span className="text-green-600">"2026-06-23T10:30:00Z"</span></p>
+                <p className="pl-4">&quot;id&quot;: <span className="text-green-600">&quot;bk_xyz789&quot;</span>,</p>
+                <p className="pl-4">&quot;status&quot;: <span className="text-green-600">&quot;confirmed&quot;</span>,</p>
+                <p className="pl-4">&quot;created_at&quot;: <span className="text-green-600">&quot;2026-06-23T10:30:00Z&quot;</span></p>
                 <p className="text-slate-600">{`}`}</p>
               </div>
             </div>

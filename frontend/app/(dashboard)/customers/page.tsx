@@ -92,35 +92,38 @@ export default function CustomersPage() {
           <Button
             variant="ghost"
             size="icon"
+            aria-label="View customer"
             className="h-8 w-8 cursor-pointer"
             onClick={(e) => {
               e.stopPropagation()
               router.push(`/customers/${item.id as number}`)
             }}
           >
-            <Eye className="h-4 w-4" />
+            <Eye aria-hidden="true" focusable="false" className="h-4 w-4" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
+            aria-label="Edit customer"
             className="h-8 w-8 cursor-pointer"
             onClick={(e) => {
               e.stopPropagation()
               router.push(`/customers/${item.id as number}`)
             }}
           >
-            <Pencil className="h-4 w-4" />
+            <Pencil aria-hidden="true" focusable="false" className="h-4 w-4" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
+            aria-label="Delete customer"
             className="h-8 w-8 text-destructive hover:text-destructive cursor-pointer"
             onClick={(e) => {
               e.stopPropagation()
               setDeleteId(item.id as number)
             }}
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash2 aria-hidden="true" focusable="false" className="h-4 w-4" />
           </Button>
         </div>
       ),

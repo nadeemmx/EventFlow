@@ -7,7 +7,7 @@ from apps.tenants.views import TenantViewSet
 from apps.users.views import UserViewSet
 from apps.customers.views import CustomerViewSet
 from apps.leads.views import LeadViewSet
-from apps.venues.views import VenueViewSet
+from apps.venues.views import VenueViewSet, PlatformAdminVenueViewSet
 from apps.packages.views import PackageViewSet
 from apps.bookings.views import BookingViewSet
 from apps.payments.views import PaymentViewSet
@@ -21,10 +21,11 @@ from apps.subscriptions.views import SubscriptionViewSet
 from apps.notifications.views import NotificationViewSet
 from apps.audit_logs.views import AuditLogViewSet
 from apps.reports.views import ReportViewSet
-from apps.dashboard.views import DashboardSummaryView
+from apps.dashboard.views import DashboardSummaryView, PlatformAdminStatsView
 from apps.settings.views import SettingsViewSet
 from apps.contracts.views import ContractViewSet
 from apps.leads.views import QuotationViewSet
+from apps.privacy.views import ContactView, PrivacyRequestCreateView, PrivacyRequestViewSet
 from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse, JsonResponse
 from django.urls import path
@@ -99,6 +100,7 @@ router.register(r"users", UserViewSet, basename="user")
 router.register(r"customers", CustomerViewSet, basename="customer")
 router.register(r"leads", LeadViewSet, basename="lead")
 router.register(r"venues", VenueViewSet, basename="venue")
+router.register(r"admin/venues", PlatformAdminVenueViewSet, basename="admin-venue")
 router.register(r"packages", PackageViewSet, basename="package")
 router.register(r"bookings", BookingViewSet, basename="booking")
 router.register(r"payments", PaymentViewSet, basename="payment")
@@ -115,6 +117,7 @@ router.register(r"reports", ReportViewSet, basename="report")
 router.register(r"settings", SettingsViewSet, basename="settings")
 router.register(r"contracts", ContractViewSet, basename="contract")
 router.register(r"quotations", QuotationViewSet, basename="quotation")
+router.register(r"privacy/requests", PrivacyRequestViewSet, basename="privacy-request")
 
 api_router = router
 
@@ -128,7 +131,10 @@ auth_urls = [
     path("auth/change-password/", ChangePasswordView.as_view(), name="auth-change-password"),
     path("profile/", ProfileView.as_view(), name="profile"),
     path("dashboard/summary/", DashboardSummaryView.as_view(), name="dashboard-summary"),
+    path("admin/stats/", PlatformAdminStatsView.as_view(), name="admin-stats"),
     path("payments/webhook/razorpay/", csrf_exempt(razorpay_webhook), name="razorpay-webhook"),
+    path("privacy/submit/", PrivacyRequestCreateView.as_view(), name="privacy-request-submit"),
+    path("contact/", ContactView.as_view(), name="contact"),
 ]
 
 api_router.urls.extend(auth_urls)

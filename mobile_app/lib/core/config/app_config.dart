@@ -21,4 +21,11 @@ class AppConfig {
     'RAZORPAY_KEY_ID',
     defaultValue: '',
   );
+
+  /// Base URL of the hosted web app (matches frontend/.env.production
+  /// NEXT_PUBLIC_APP_URL). Used for legal pages opened from the app.
+  static const String webBaseUrl = 'https://app.eventflow.com';
+
+  static const String privacyPolicyUrl = '$webBaseUrl/privacy-policy';
+  static const String termsUrl = '$webBaseUrl/terms-of-service';
 }

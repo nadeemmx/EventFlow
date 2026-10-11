@@ -47,6 +47,9 @@ export default function DashboardShowcase() {
             <div className="w-2.5 h-2.5 rounded-full bg-yellow-400/60" />
             <div className="w-2.5 h-2.5 rounded-full bg-green-400/60" />
             <div className="ml-3 text-xs font-medium text-slate-500">EventFlow Dashboard</div>
+            <div className="ml-auto text-[10px] font-medium text-slate-500 uppercase tracking-wider">
+              Sample data
+            </div>
           </div>
 
           <div className="p-5 sm:p-6">
@@ -65,7 +68,7 @@ export default function DashboardShowcase() {
                       <Icon className="h-3.5 w-3.5 text-amber-500" />
                     </div>
                     <p className="text-lg font-bold text-slate-900">{metric.value}</p>
-                    <p className="text-[11px] font-medium text-success">{metric.change} vs last month</p>
+                    <p className="text-[11px] font-medium text-emerald-700">{metric.change} vs last month</p>
                   </div>
                 )
               })}
@@ -79,14 +82,14 @@ export default function DashboardShowcase() {
                 </div>
                 <div className="grid grid-cols-7 gap-1 text-center">
                   {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
-                    <span key={d} className="text-[9px] text-slate-400 font-medium">{d}</span>
+                    <span key={d} className="text-[9px] text-slate-500 font-medium">{d}</span>
                   ))}
                   {Array.from({ length: 35 }).map((_, i) => (
                     <div
                       key={i}
                       className={`text-[10px] py-1 rounded ${
                         i === 15 ? "bg-amber-500 text-slate-900 font-semibold" :
-                        i % 7 === 0 || i % 7 === 6 ? "text-slate-400" : "text-slate-700"
+                        i % 7 === 0 || i % 7 === 6 ? "text-slate-500" : "text-slate-700"
                       }`}
                     >
                       {i + 1}
@@ -98,14 +101,13 @@ export default function DashboardShowcase() {
               <div className="rounded-lg border border-slate-100 bg-slate-50/30 p-3.5">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-xs font-medium text-slate-600">Upcoming Events</span>
-                  <span className="text-[10px] text-amber-600 font-semibold">View all</span>
                 </div>
                 <div className="space-y-2">
                   {[
-                    { name: "Grand Wedding", date: "Today, 4:00 PM", status: "Confirmed", color: "text-success" },
-                    { name: "Corporate Gala", date: "Tomorrow, 7:00 PM", status: "Confirmed", color: "text-success" },
-                    { name: "Birthday Bash", date: "Jul 2, 2:00 PM", status: "Tentative", color: "text-amber-600" },
-                    { name: "Conference", date: "Jul 5, 9:00 AM", status: "Confirmed", color: "text-success" },
+                    { name: "Grand Wedding", date: "Today, 4:00 PM", status: "Confirmed", color: "text-emerald-700" },
+                    { name: "Corporate Gala", date: "Tomorrow, 7:00 PM", status: "Confirmed", color: "text-emerald-700" },
+                    { name: "Birthday Bash", date: "Jul 2, 2:00 PM", status: "Tentative", color: "text-amber-700" },
+                    { name: "Conference", date: "Jul 5, 9:00 AM", status: "Confirmed", color: "text-emerald-700" },
                   ].map((event) => (
                     <div key={event.name} className="flex items-center justify-between">
                       <div>
@@ -129,10 +131,10 @@ export default function DashboardShowcase() {
           className="mt-8 text-center"
         >
           <a
-            href="/login"
+            href="/signup"
             className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-6 py-3 text-sm font-semibold text-slate-900 hover:bg-amber-600 transition-all hover:shadow-lg hover:shadow-amber-500/25"
           >
-            Try It Free for 14 Days
+            Create your account
           </a>
         </motion.div>
       </div>

@@ -3,7 +3,19 @@
 import { useEffect, useRef } from "react"
 import { gsap } from "gsap"
 import { ScrollTrigger } from "gsap/ScrollTrigger"
-import { CalendarCheck, Users, CreditCard, BarChart3 } from "lucide-react"
+import {
+  CalendarCheck,
+  Users,
+  Target,
+  Building2,
+  CreditCard,
+  FileText,
+  Bell,
+  BarChart3,
+  UserCog,
+  Package,
+  FileSignature,
+} from "lucide-react"
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -11,22 +23,57 @@ const features = [
   {
     icon: CalendarCheck,
     title: "Booking Management",
-    description: "Real-time availability, drag-and-drop scheduling, and automatic conflict detection. No more double-bookings.",
+    description: "See venue availability on a shared calendar and keep each booking scheduled in one place.",
   },
   {
     icon: Users,
-    title: "Lead CRM",
-    description: "Capture, track, and convert leads with a built-in CRM. Automated follow-ups and lead scoring included.",
+    title: "Customer Management",
+    description: "Centralized customer profiles with contact history, preferences, and communication logs for every event.",
+  },
+  {
+    icon: Target,
+    title: "Lead Management",
+    description: "Capture, track, and convert leads with a built-in CRM, with follow-up reminders and lead tracking.",
+  },
+  {
+    icon: Building2,
+    title: "Venue Management",
+    description: "Manage multiple venues with capacity tracking, pricing tiers, and availability calendars.",
   },
   {
     icon: CreditCard,
-    title: "Payments & Invoicing",
-    description: "Accept payments via UPI, cards, and net banking. Generate invoices, track dues, and process refunds.",
+    title: "Payments",
+    description: "Accept payments via UPI, cards, and net banking. Track dues, process refunds, and reconcile with ease.",
+  },
+  {
+    icon: FileText,
+    title: "Invoices",
+    description: "Generate GST invoices from your bookings, send them to customers, and track payments against them.",
+  },
+  {
+    icon: Bell,
+    title: "Notifications",
+    description: "Reminders and updates via email and WhatsApp. Keep customers and staff informed at every stage.",
   },
   {
     icon: BarChart3,
-    title: "Analytics Dashboard",
+    title: "Reports & Dashboard",
     description: "Revenue reports, occupancy trends, and business insights. Make data-driven decisions for your venue.",
+  },
+  {
+    icon: UserCog,
+    title: "Staff Management",
+    description: "Assign roles and manage your team from a single dashboard.",
+  },
+  {
+    icon: Package,
+    title: "Inventory Management",
+    description: "Track equipment, supplies, and stock levels. Allocate resources per booking and avoid shortages.",
+  },
+  {
+    icon: FileSignature,
+    title: "Contracts & Quotations",
+    description: "Create and send contracts and quotations, and record contract sign-off against each booking.",
   },
 ]
 
@@ -38,8 +85,8 @@ export default function Features() {
       gsap.from(sectionRef.current!.querySelectorAll(".feature-card"), {
         y: 30,
         opacity: 0,
-        duration: 0.6,
-        stagger: 0.1,
+        duration: 0.5,
+        stagger: 0.06,
         ease: "power3.out",
         scrollTrigger: {
           trigger: sectionRef.current,
@@ -63,7 +110,7 @@ export default function Features() {
           </p>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {features.map((feature) => {
             const Icon = feature.icon
             return (

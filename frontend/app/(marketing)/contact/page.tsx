@@ -1,7 +1,10 @@
 import { createMetadata } from "@/lib/seo"
+import { business } from "@/lib/business"
 import PageHero from "@/components/marketing/PageHero"
 import PageCTA from "@/components/marketing/PageCTA"
 import SectionHeader from "@/components/marketing/SectionHeader"
+import ContactForm from "@/components/marketing/ContactForm"
+import BusinessField from "@/components/legal/BusinessField"
 
 export const metadata = createMetadata({
   title: "Contact",
@@ -12,41 +15,41 @@ export const metadata = createMetadata({
 const contactInfo = [
   {
     label: "Email",
-    value: "hello@eventflow.com",
-    href: "mailto:hello@eventflow.com",
+    value: business.generalEmail,
+    href: `mailto:${business.generalEmail}`,
   },
   {
     label: "Phone",
-    value: "+91 1800-123-4567",
-    href: "tel:+9118001234567",
+    value: business.phone,
+    href: business.phone ? `tel:${business.phone.replace(/[^+\d]/g, "")}` : null,
   },
   {
     label: "Address",
-    value: "91 Springboard, MG Road, Bangalore — 560001, India",
+    value: business.address,
     href: null,
   },
 ]
 
 const faqs = [
   {
-    question: "What is the typical onboarding timeline?",
-    answer: "Most venues go live within 2 weeks. Our onboarding team handles data migration, staff training, and configuration so you can hit the ground running.",
+    question: "How long does onboarding take?",
+    answer: "It depends on your venue\u2019s setup and how much data you are moving. Once we understand your requirements, we confirm a realistic go-live plan with you.",
   },
   {
     question: "Do you offer custom pricing for large venues?",
-    answer: "Yes. We offer custom plans for multi-venue operators and large event spaces. Contact our sales team for a tailored quote based on your specific needs.",
+    answer: "We tailor quotes for multi-venue operators and large event spaces. Tell us what you need and our sales team will come back with pricing for your use case.",
   },
   {
     question: "Can I migrate data from my existing system?",
-    answer: "Absolutely. Our migration team will transfer your existing bookings, customer data, and invoices from any platform or spreadsheet into EventFlow with zero downtime.",
+    answer: "We can import bookings, customers and invoices from spreadsheets or most systems. We agree the migration plan with you first, including scope, timing and how any disruption is handled.",
   },
   {
     question: "What kind of support do you provide?",
-    answer: "All plans include email and chat support during business hours. Premium plans include a dedicated account manager, priority phone support, and 24/7 availability.",
+    answer: "Support channels and response commitments vary by plan. We will confirm exactly what is included before you sign up.",
   },
   {
     question: "Is EventFlow suitable for small venues?",
-    answer: "Yes. EventFlow is designed for venues of all sizes. Our Lite plan starts at just ₹999 per month and includes everything a small venue needs to manage bookings and payments.",
+    answer: "EventFlow is designed for venues of all sizes. See the pricing page for current plan details \u2014 the Starter plan is listed there for single venues.",
   },
 ]
 
@@ -65,79 +68,9 @@ export default function ContactPage() {
             <div>
               <SectionHeader
                 title="Send Us a Message"
-                description="Fill out the form and we will respond within 24 hours"
+                description="Fill out the form and we will reply by email"
               />
-              <form className="space-y-5" action="#">
-                <div className="grid gap-5 sm:grid-cols-2">
-                  <div>
-                    <label htmlFor="name" className="block text-sm font-medium text-slate-900 mb-1.5">Name</label>
-                    <input
-                      id="name"
-                      type="text"
-                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500"
-                      placeholder="Your name"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-slate-900 mb-1.5">Email</label>
-                    <input
-                      id="email"
-                      type="email"
-                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500"
-                      placeholder="you@example.com"
-                    />
-                  </div>
-                </div>
-                <div className="grid gap-5 sm:grid-cols-2">
-                  <div>
-                    <label htmlFor="company" className="block text-sm font-medium text-slate-900 mb-1.5">Company</label>
-                    <input
-                      id="company"
-                      type="text"
-                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500"
-                      placeholder="Your venue name"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="phone" className="block text-sm font-medium text-slate-900 mb-1.5">Phone</label>
-                    <input
-                      id="phone"
-                      type="tel"
-                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500"
-                      placeholder="+91 98765 43210"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label htmlFor="subject" className="block text-sm font-medium text-slate-900 mb-1.5">Subject</label>
-                  <select
-                    id="subject"
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500"
-                  >
-                    <option value="">Select a subject</option>
-                    <option value="general">General Inquiry</option>
-                    <option value="sales">Sales & Pricing</option>
-                    <option value="support">Technical Support</option>
-                    <option value="partnership">Partnership Opportunities</option>
-                    <option value="demo">Request a Demo</option>
-                  </select>
-                </div>
-                <div>
-                  <label htmlFor="message" className="block text-sm font-medium text-slate-900 mb-1.5">Message</label>
-                  <textarea
-                    id="message"
-                    rows={5}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 resize-none"
-                    placeholder="Tell us how we can help you..."
-                  />
-                </div>
-                <button
-                  type="button"
-                  className="w-full sm:w-auto rounded-xl bg-amber-500 px-8 py-3 text-sm font-semibold text-slate-900 hover:bg-amber-600 transition-all"
-                >
-                  Send Message
-                </button>
-              </form>
+              <ContactForm />
             </div>
             <div>
               <SectionHeader
@@ -147,13 +80,15 @@ export default function ContactPage() {
               <div className="space-y-6">
                 {contactInfo.map((info) => (
                   <div key={info.label} className="rounded-2xl border border-slate-200 bg-white p-6">
-                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wide mb-1">{info.label}</h3>
+                    <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wide mb-1">{info.label}</h3>
                     {info.href ? (
                       <a href={info.href} className="text-lg font-semibold text-slate-900 hover:text-amber-600 transition-colors">
-                        {info.value}
+                        <BusinessField value={info.value} label={info.label} />
                       </a>
                     ) : (
-                      <p className="text-lg font-semibold text-slate-900">{info.value}</p>
+                      <p className="text-lg font-semibold text-slate-900">
+                        <BusinessField value={info.value} label={info.label} />
+                      </p>
                     )}
                   </div>
                 ))}
@@ -187,8 +122,8 @@ export default function ContactPage() {
 
       <PageCTA
         title="Ready to Streamline Your Venue?"
-        highlight="Start Free Trial"
-        description="Join 500+ venues using EventFlow. No credit card required."
+        highlight="Start Free"
+        description="Create an account and explore EventFlow for your venue. No credit card required to sign up."
       />
     </>
   )

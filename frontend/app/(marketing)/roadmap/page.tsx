@@ -5,7 +5,7 @@ import { Lightbulb, Sparkles, Globe, CreditCard, Smartphone, BarChart3, Building
 
 export const metadata = createMetadata({
   title: "Product Roadmap",
-  description: "Explore the EventFlow product roadmap. See what we are building now, next, and in the future to power event venues worldwide.",
+  description: "Explore the EventFlow product roadmap. See what we are building now, next, and in the future for event venues.",
   path: "/roadmap",
 })
 
@@ -13,8 +13,8 @@ const phases = [
   {
     title: "Now",
     subtitle: "Current Quarter",
-    color: "bg-amber-500",
-    textColor: "text-amber-500",
+    color: "bg-amber-700",
+    textColor: "text-amber-700",
     description: "What we are actively building and shipping right now.",
     items: [
       {
@@ -26,9 +26,9 @@ const phases = [
       },
       {
         icon: BarChart3,
-        title: "SMS Notifications",
-        desc: "Automated SMS reminders, confirmations, and updates for both venue staff and customers. Includes two-way messaging.",
-        status: "In Progress",
+        title: "Additional notification channels",
+        desc: "We are reviewing further ways to deliver booking reminders and updates alongside the email and WhatsApp channels that exist today.",
+        status: "Under review",
         statusColor: "bg-amber-100 text-amber-700",
       },
       {
@@ -146,7 +146,7 @@ export default function RoadmapPage() {
             <div className="grid md:grid-cols-3 gap-6">
               {phase.items.map((item) => (
                 <div key={item.title} className="bg-white rounded-xl border border-slate-200 p-6 hover:border-amber-500/40 hover:shadow-lg transition-all">
-                  <item.icon className={`w-8 h-8 ${phase.textColor} mb-3`} />
+                  <item.icon className={`w-8 h-8 ${phase.textColor} mb-3`} aria-hidden="true" focusable="false" />
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <h3 className="font-semibold text-slate-900">{item.title}</h3>
                     <span className={`shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${item.statusColor}`}>
@@ -164,13 +164,13 @@ export default function RoadmapPage() {
       {/* Feature request CTA */}
       <section className="py-20">
         <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 text-center">
-          <Lightbulb className="w-12 h-12 text-amber-500 mx-auto mb-4" />
+          <Lightbulb className="w-12 h-12 text-amber-700 mx-auto mb-4" aria-hidden="true" focusable="false" />
           <h2 className="text-3xl font-bold text-slate-900 mb-2">Have an idea?</h2>
           <p className="text-slate-600 mb-8 max-w-lg mx-auto">
             We love hearing from our users. Share your feature requests and help shape the future of EventFlow.
           </p>
           <a
-            href="#"
+            href="/contact/"
             className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-7 py-3.5 text-base font-semibold text-slate-900 hover:bg-amber-600 transition-all"
           >
             Submit a Feature Request
@@ -181,9 +181,9 @@ export default function RoadmapPage() {
       <PageCTA
         title="Start using what we"
         highlight="built today."
-        description="Get early access to new features and help us prioritize what comes next."
-        buttonText="Start Free Trial"
-        buttonHref="/login"
+        description="Tell us what would help your venue and we will take it into account."
+        buttonText="Create Your Account"
+        buttonHref="/signup"
       />
     </>
   )

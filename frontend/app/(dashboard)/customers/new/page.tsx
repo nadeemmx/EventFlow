@@ -84,10 +84,14 @@ export default function NewCustomerPage() {
                 <Input
                   id="full_name"
                   placeholder="John Doe"
+                  aria-invalid={errors.full_name ? true : undefined}
+                  aria-describedby={errors.full_name ? "full_name-error" : undefined}
                   {...register("full_name")}
                 />
                 {errors.full_name && (
-                  <p className="text-sm text-destructive">{errors.full_name.message}</p>
+                  <p id="full_name-error" role="alert" className="text-sm text-destructive">
+                    {errors.full_name.message}
+                  </p>
                 )}
               </div>
 
@@ -98,10 +102,14 @@ export default function NewCustomerPage() {
                 <Input
                   id="mobile"
                   placeholder="+91 98765 43210"
+                  aria-invalid={errors.mobile ? true : undefined}
+                  aria-describedby={errors.mobile ? "mobile-error" : undefined}
                   {...register("mobile")}
                 />
                 {errors.mobile && (
-                  <p className="text-sm text-destructive">{errors.mobile.message}</p>
+                  <p id="mobile-error" role="alert" className="text-sm text-destructive">
+                    {errors.mobile.message}
+                  </p>
                 )}
               </div>
 
@@ -111,10 +119,14 @@ export default function NewCustomerPage() {
                   id="email"
                   type="email"
                   placeholder="john@example.com"
+                  aria-invalid={errors.email ? true : undefined}
+                  aria-describedby={errors.email ? "email-error" : undefined}
                   {...register("email")}
                 />
                 {errors.email && (
-                  <p className="text-sm text-destructive">{errors.email.message}</p>
+                  <p id="email-error" role="alert" className="text-sm text-destructive">
+                    {errors.email.message}
+                  </p>
                 )}
                 <p className="text-xs text-muted-foreground">Optional</p>
               </div>
@@ -126,10 +138,14 @@ export default function NewCustomerPage() {
                 id="address"
                 placeholder="Enter full address"
                 rows={3}
+                aria-invalid={errors.address ? true : undefined}
+                aria-describedby={errors.address ? "address-error" : undefined}
                 {...register("address")}
               />
               {errors.address && (
-                <p className="text-sm text-destructive">{errors.address.message}</p>
+                <p id="address-error" role="alert" className="text-sm text-destructive">
+                  {errors.address.message}
+                </p>
               )}
               <p className="text-xs text-muted-foreground">Optional</p>
             </div>
@@ -140,10 +156,14 @@ export default function NewCustomerPage() {
                 id="remarks"
                 placeholder="Any additional notes..."
                 rows={3}
+                aria-invalid={errors.remarks ? true : undefined}
+                aria-describedby={errors.remarks ? "remarks-error" : undefined}
                 {...register("remarks")}
               />
               {errors.remarks && (
-                <p className="text-sm text-destructive">{errors.remarks.message}</p>
+                <p id="remarks-error" role="alert" className="text-sm text-destructive">
+                  {errors.remarks.message}
+                </p>
               )}
               <p className="text-xs text-muted-foreground">Optional</p>
             </div>

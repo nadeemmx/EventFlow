@@ -92,9 +92,9 @@ export default function AuditLogsPage() {
 
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
         <div className="space-y-1">
-          <label className="text-xs text-muted-foreground">Module</label>
+          <label htmlFor="audit-module" id="audit-module-label" className="text-xs text-muted-foreground">Module</label>
           <Select value={module} onValueChange={handleModuleChange}>
-            <SelectTrigger className="w-44 cursor-pointer">
+            <SelectTrigger id="audit-module" aria-labelledby="audit-module-label" className="w-44 cursor-pointer">
               <SelectValue placeholder="All Modules" />
             </SelectTrigger>
             <SelectContent>
@@ -106,9 +106,9 @@ export default function AuditLogsPage() {
           </Select>
         </div>
         <div className="space-y-1">
-          <label className="text-xs text-muted-foreground">Action</label>
+          <label htmlFor="audit-action" id="audit-action-label" className="text-xs text-muted-foreground">Action</label>
           <Select value={action} onValueChange={handleActionChange}>
-            <SelectTrigger className="w-44 cursor-pointer">
+            <SelectTrigger id="audit-action" aria-labelledby="audit-action-label" className="w-44 cursor-pointer">
               <SelectValue placeholder="All Actions" />
             </SelectTrigger>
             <SelectContent>

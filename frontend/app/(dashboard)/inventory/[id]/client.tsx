@@ -27,7 +27,7 @@ const editSchema = z.object({
   name: z.string().min(1, "Name is required"),
   category: z.string().min(1, "Category is required"),
   quantity: z.coerce.number().min(0, "Quantity must be at least 0"),
-  unit: z.string().min(1, "Unit is required"),
+  unit: z.string(),
   status: z.string(),
 })
 
@@ -172,9 +172,8 @@ export default function InventoryDetailClient() {
                           <SelectTrigger className="cursor-pointer"><SelectValue /></SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="IN_STOCK" className="cursor-pointer">In Stock</SelectItem>
-                          <SelectItem value="LOW_STOCK" className="cursor-pointer">Low Stock</SelectItem>
-                          <SelectItem value="OUT_OF_STOCK" className="cursor-pointer">Out of Stock</SelectItem>
+                          <SelectItem value="ACTIVE" className="cursor-pointer">Active</SelectItem>
+                          <SelectItem value="INACTIVE" className="cursor-pointer">Inactive</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />

@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from apps.vendors.models import Vendor, BookingVendor
+from core.validators import validate_mobile
 
 
 class VendorSerializer(serializers.ModelSerializer):
@@ -10,6 +11,7 @@ class VendorSerializer(serializers.ModelSerializer):
             "email", "address", "status", "created_at", "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
+        extra_kwargs = {"mobile": {"validators": [validate_mobile]}}
 
 
 class AssignVendorSerializer(serializers.Serializer):

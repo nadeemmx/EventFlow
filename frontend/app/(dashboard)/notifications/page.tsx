@@ -126,28 +126,31 @@ export default function NotificationsPage() {
               <Button
                 variant="ghost"
                 size="icon"
+                aria-label="Mark notification as read"
                 className="cursor-pointer"
                 onClick={(e) => { e.stopPropagation(); handleMarkAsRead(notif.id) }}
                 title="Mark as read"
               >
-                <CheckCheck className="h-4 w-4" />
+                <CheckCheck aria-hidden="true" focusable="false" className="h-4 w-4" />
               </Button>
             )}
             <Button
               variant="ghost"
               size="icon"
+              aria-label="View notification"
               className="cursor-pointer"
               onClick={(e) => { e.stopPropagation(); router.push(`/notifications/${notif.id}`) }}
             >
-              <Eye className="h-4 w-4" />
+              <Eye aria-hidden="true" focusable="false" className="h-4 w-4" />
             </Button>
             <Button
               variant="ghost"
               size="icon"
+              aria-label="Delete notification"
               className="cursor-pointer text-destructive hover:text-destructive"
               onClick={(e) => { e.stopPropagation(); setDeleteId(notif.id) }}
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 aria-hidden="true" focusable="false" className="h-4 w-4" />
             </Button>
           </div>
         )

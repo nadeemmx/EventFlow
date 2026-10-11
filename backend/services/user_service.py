@@ -66,3 +66,43 @@ class UserService(BaseService):
         if user.role == UserRole.OWNER:
             raise ValidationException("Cannot deactivate owner")
         return self.repo.update(user, is_active=False)
+
+    def delete_user(self, user_id):
+        """Hard-delete a user, with the guards the raw viewset delete lacked.
+
+        ``UserViewSet`` was a plain ``ModelViewSet``, so DELETE ran
+        ``instance.delete()`` directly — no OWNER guard, no confirmation, no
+        audit row. QA-TEST-REPORT-ROLES.md F-4 records an automated RBAC sweep
+        hard-deleting the Owner fixture that way.
+
+        Hard delete is deliberate for users rather than the soft delete used
+        for customers/staff: a user row carries a password hash, so leaving it
+        behind after a "delete" is worse for GDPR than removing it. What was
+        missing was the trail, which is written below.
+
+        ``UserRepository.delete`` routes through ``BaseRepository.delete``,
+        which hard-deletes precisely because ``User`` has no ``is_deleted``
+        field.
+        """
+        user = self.repo.get_by_id(user_id)
+        if user.role == UserRole.OWNER:
+            raise ValidationException("Cannot delete owner")
+        if self.user and user.id == self.user.id:
+            raise ValidationException("Cannot delete your own account")
+        # Capture the identity first and write the row *after* the delete:
+        # ``AuditLog.user`` is SET_NULL, so the log survives, and ``record_id``
+        # is a plain integer rather than an FK. Storing the identifying fields
+        # in old_data keeps the trail meaningful once the row is gone.
+        identity = (
+            f"{{'email': '{user.email}', 'full_name': '{user.full_name}', "
+            f"'role': '{user.role}'}}"
+        )
+        record_id = user.id
+        self.repo.delete(user)
+        self.audit_repo.log(
+            tenant=self.tenant, user=self.user,
+            module="USERS", action="DELETE",
+            record_id=record_id,
+            old_data=identity,
+        )
+        return user

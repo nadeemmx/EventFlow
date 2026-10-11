@@ -10,6 +10,25 @@ export interface VendorFormData {
   status?: string;
 }
 
+type ApiVendor = Omit<Vendor, "company_name" | "service_type" | "contact_person"> & {
+  name: string;
+  vendor_type: string;
+};
+
+function fromApi(raw: ApiVendor): Vendor {
+  return { ...raw, company_name: raw.name, service_type: raw.vendor_type, contact_person: "" };
+}
+
+function toApi(data: Partial<VendorFormData>): Partial<VendorFormData> & Record<string, unknown> {
+  const { company_name, service_type, contact_person, ...rest } = data;
+  void contact_person;
+  return {
+    ...rest,
+    ...(company_name !== undefined ? { name: company_name } : {}),
+    ...(service_type !== undefined ? { vendor_type: service_type } : {}),
+  };
+}
+
 export const vendorsService = {
   list: async (params?: {
     page?: number;
@@ -18,23 +37,28 @@ export const vendorsService = {
     status?: string;
     service_type?: string;
   }) => {
-    const res = await apiClient.get<PaginatedResponse<Vendor>>("/vendors/", { params });
-    return res.data;
+    const { service_type, ...rest } = params ?? {};
+    const query = {
+      ...rest,
+      ...(service_type !== undefined ? { vendor_type: service_type } : {}),
+    };
+    const res = await apiClient.get<PaginatedResponse<ApiVendor>>("/vendors/", { params: query });
+    return { ...res.data, data: res.data.data.map(fromApi) };
   },
 
   get: async (id: number) => {
-    const res = await apiClient.get<ApiResponse<Vendor>>(`/vendors/${id}/`);
-    return res.data;
+    const res = await apiClient.get<ApiResponse<ApiVendor>>(`/vendors/${id}/`);
+    return { ...res.data, data: fromApi(res.data.data) };
   },
 
   create: async (data: VendorFormData) => {
-    const res = await apiClient.post<ApiResponse<Vendor>>("/vendors/", data);
-    return res.data;
+    const res = await apiClient.post<ApiResponse<ApiVendor>>("/vendors/", toApi(data));
+    return { ...res.data, data: fromApi(res.data.data) };
   },
 
   update: async (id: number, data: Partial<VendorFormData>) => {
-    const res = await apiClient.patch<ApiResponse<Vendor>>(`/vendors/${id}/`, data);
-    return res.data;
+    const res = await apiClient.patch<ApiResponse<ApiVendor>>(`/vendors/${id}/`, toApi(data));
+    return { ...res.data, data: fromApi(res.data.data) };
   },
 
   delete: async (id: number) => {

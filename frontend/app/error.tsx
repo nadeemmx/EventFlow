@@ -15,9 +15,11 @@ export default function Error({
 
   return (
     <div className="flex min-h-screen items-center justify-center">
-      <div className="text-center max-w-md mx-auto p-6">
+      <main id="main-content" tabIndex={-1} className="text-center max-w-md mx-auto p-6">
         <div className="mb-4 text-destructive">
           <svg
+            aria-hidden="true"
+            focusable="false"
             className="mx-auto h-12 w-12"
             fill="none"
             viewBox="0 0 24 24"
@@ -41,7 +43,7 @@ export default function Error({
         >
           Try again
         </button>
-      </div>
+      </main>
     </div>
   );
 }

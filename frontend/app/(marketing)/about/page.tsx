@@ -12,29 +12,35 @@ export const metadata = createMetadata({
 const values = [
   {
     title: "Innovation",
-    description: "We continuously push the boundaries of what's possible in venue management, leveraging cutting-edge technology to solve real-world problems for our customers.",
+    description: "We keep improving the platform for the day-to-day realities of venue management, and we solve the problems our customers actually report.",
   },
   {
     title: "Reliability",
-    description: "Our platform delivers 99.9% uptime and processes thousands of events daily. Venue owners trust us to keep their operations running smoothly without interruption.",
+    description: "Venue operations cannot wait for a fix. We build for steady, predictable performance and we publish incidents on our status page as they happen.",
   },
   {
     title: "Customer Success",
-    description: "Every feature we build is driven by customer feedback. Our dedicated success team works side by side with venue owners to ensure they get maximum value from EventFlow.",
+    description: "Every feature we build is driven by customer feedback. We work alongside venue owners to make sure the product fits how they actually run their business.",
   },
   {
     title: "Security",
-    description: "We handle sensitive payment and customer data with the highest security standards. SOC 2 compliant with end-to-end encryption and regular third-party audits.",
+    description: "We handle sensitive payment and customer data carefully: gateway credentials are encrypted at rest, sessions are token-based, and access is role-scoped. Our SOC 2 certification is in progress — we do not claim to hold it yet.",
   },
 ]
 
-const team = [
-  { name: "Arjun Mehta", role: "CEO & Co-Founder" },
-  { name: "Priya Sharma", role: "CTO & Co-Founder" },
-  { name: "Rahul Verma", role: "VP of Product" },
-  { name: "Ananya Patel", role: "VP of Customer Success" },
-  { name: "Vikram Joshi", role: "Head of Engineering" },
-  { name: "Neha Kapoor", role: "Head of Marketing" },
+const teamAreas = [
+  {
+    title: "Product & Engineering",
+    description: "Build and maintain the booking, invoicing, payment, and reporting modules that venue teams use every day.",
+  },
+  {
+    title: "Customer & Support",
+    description: "Onboard venue teams, answer questions, and feed real customer problems back into the roadmap.",
+  },
+  {
+    title: "Operations & Growth",
+    description: "Keep the business running — billing, partnerships, and the day-to-day work behind the product.",
+  },
 ]
 
 export default function AboutPage() {
@@ -43,24 +49,31 @@ export default function AboutPage() {
       <PageHero
         title="Our Mission to Transform"
         highlight="Event Venues"
-        description="EventFlow was founded with a simple belief: venue owners deserve modern tools to manage, grow, and scale their business."
+        description="EventFlow was built on a simple belief: venue owners deserve modern tools to manage, grow, and scale their business."
       />
 
       <section className="py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <SectionHeader
             title="Our Story"
-            description="From a garage startup to India's leading venue management platform"
+            description="Why we build EventFlow"
           />
           <div className="mx-auto max-w-3xl space-y-6 text-slate-600 leading-relaxed">
             <p>
-              EventFlow was founded in 2022 by Arjun Mehta and Priya Sharma, who experienced firsthand the chaos of managing event venues with spreadsheets and disconnected tools. After running a boutique venue in Bangalore, they realized the industry was starved for purpose-built technology.
+              EventFlow started because managing an event venue with spreadsheets and disconnected
+              tools does not work. Bookings, leads, invoices, payments, staff, and vendors live in
+              different places, and venue teams end up doing the same work twice.
             </p>
             <p>
-              What started as a simple booking calendar quickly evolved into a full-stack platform covering lead management, invoicing, payment processing, CRM, and analytics. Today, EventFlow is headquartered in India with a team of 60+ employees serving over 500 venues across the country.
+              What began as a booking calendar grew into a full platform covering lead management,
+              invoicing, payment processing, CRM, and analytics — designed specifically for event
+              venues rather than adapted from generic software.
             </p>
             <p>
-              Our platform has powered more than 50,000 events and processed over ₹100 crore in revenue for our customers. From wedding venues and banquet halls to corporate event spaces, EventFlow helps venue owners reclaim their time and grow their business.
+              Today EventFlow helps venue businesses of every size run bookings, take payments
+              through Razorpay, send invoices by email and WhatsApp, and keep their customer records
+              in one place. We are a small team, and we would rather tell you exactly what the
+              product does than make claims we cannot back up.
             </p>
           </div>
         </div>
@@ -76,13 +89,16 @@ export default function AboutPage() {
             <div className="rounded-2xl border border-slate-200 bg-white p-8">
               <h3 className="text-xl font-bold text-slate-900 mb-3">Our Mission</h3>
               <p className="text-slate-600 leading-relaxed">
-                To empower every event venue owner with enterprise-grade technology that is simple to use, affordable to adopt, and powerful enough to transform their business operations.
+                To empower every event venue owner with technology that is simple to use, affordable
+                to adopt, and powerful enough to transform their business operations.
               </p>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-8">
               <h3 className="text-xl font-bold text-slate-900 mb-3">Our Vision</h3>
               <p className="text-slate-600 leading-relaxed">
-                A world where every event venue operates with complete confidence — where booking management, payments, and customer relationships are fully automated, leaving owners free to focus on creating unforgettable experiences.
+                A world where every event venue operates with confidence — where booking management,
+                payments, and customer relationships are handled in one place, leaving owners free to
+                focus on creating unforgettable experiences.
               </p>
             </div>
           </div>
@@ -115,20 +131,20 @@ export default function AboutPage() {
       <section className="bg-slate-50/50 py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <SectionHeader
-            title="Meet the Team"
-            description="The people building the future of venue management"
+            title="How We Work"
+            description="The areas that keep EventFlow running"
           />
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {team.map((member) => (
+            {teamAreas.map((area) => (
               <div
-                key={member.name}
-                className="rounded-2xl border border-slate-200 bg-white p-6 text-center"
+                key={area.title}
+                className="rounded-2xl border border-slate-200 bg-white p-6"
               >
-                <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white font-bold text-xl">
-                  {member.name.split(" ").map((n) => n[0]).join("")}
+                <div className="mb-4 h-12 w-12 rounded-full bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white font-bold text-lg">
+                  EF
                 </div>
-                <h3 className="text-lg font-bold text-slate-900">{member.name}</h3>
-                <p className="text-sm text-slate-500">{member.role}</p>
+                <h3 className="text-lg font-bold text-slate-900">{area.title}</h3>
+                <p className="text-sm text-slate-500 leading-relaxed mt-1">{area.description}</p>
               </div>
             ))}
           </div>
@@ -137,8 +153,8 @@ export default function AboutPage() {
 
       <PageCTA
         title="Ready to Transform Your Venue?"
-        highlight="Start Free Trial"
-        description="Join 500+ venues already using EventFlow to streamline operations and grow revenue."
+        highlight="Start Free"
+        description="Create an account, put bookings, invoices, and payments in one place, and see how EventFlow fits your venue."
       />
     </>
   )
