@@ -163,10 +163,10 @@ Any future change that moves one of these numbers is a regression.
 environment or product-scope limitations and the 6 caveats above are
 non-blocking follow-ups.
 
-The `qa-pass-2026-10-11` tag was **not created**: at the time of this report
-the 12 fixes are still uncommitted in the working tree (173 modified, 67
-untracked files), so `HEAD` (`db65e27`) predates them and tagging it would
-certify pre-fix code. The tag should be created after the fixes are committed.
+Tagged `qa-pass-2026-10-11` → commit `9103586` on `audit/fixes` (239 files:
+the 12 fixes, their regression tests, `restore.sh`, and the QA reports).
+Not pushed. The tag was created only after the fixes were committed, so it
+certifies the fixed code rather than the pre-fix `db65e27`.
 
 ---
 *Web QA complete. Mobile handoff ready.*
