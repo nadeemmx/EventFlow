@@ -149,7 +149,7 @@ jobs:
           set -euo pipefail
           shellcheck --version
           # -S error: hard defects only (warnings are reviewed locally).
-          # shellcheck ships with the GitHub-hosted ubuntu runners.
+          # Installed by default on the GitHub-hosted ubuntu runners.
           mapfile -t scripts < <(git ls-files '*.sh')
           shellcheck -S error -x "${scripts[@]}"
           echo "OK: shellcheck found no errors"

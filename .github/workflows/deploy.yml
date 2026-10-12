@@ -58,6 +58,10 @@ jobs:
             echo "::error::Missing required GitHub configuration: ${missing[*]}. Add them under Settings → Secrets and variables → Actions, then re-run."
             exit 1
           fi
+          # SSH_PORT is provided by the job env (secret VPS_PORT, default 22).
+          # ShellCheck only inspects the run script, sees no assignment, and
+          # suggests SSH_HOST as a possible typo — suppress exactly SC2153 here.
+          # shellcheck disable=SC2153
           if ! printf '%s' "${SSH_PORT}" | grep -Eq '^[0-9]+$'; then
             echo "::error::secret VPS_PORT must be numeric, got: ${SSH_PORT}"
             exit 1
@@ -200,7 +204,7 @@ jobs:
               fi
               sleep 6
             done
-            echo "[FAIL] ${label} → ${code} (expected ${want}) at ${BASE_URL}${path}"
+            echo "[FAIL] ${label} → ${code} (expected ${want}) at ${BASE_URL}${path} after ${attempt} attempts"
             return 1
           }
           failed=0
@@ -240,7 +244,7 @@ jobs:
             echo "git log --oneline -5                 # pick the previous good commit"
             echo "git checkout <PREVIOUS_SHA> && git reset --hard HEAD"
             echo "bash /home/eventflow/eventflow/deploy/deploy_production.sh"
-            echo "```"
+            echo '```'
             echo ""
             echo "Backups: \`/home/eventflow/backups\` (\`deploy/scripts/backup.sh\`, cron-managed; restore with \`restore.sh\`)."
           } >> "${GITHUB_STEP_SUMMARY}"
