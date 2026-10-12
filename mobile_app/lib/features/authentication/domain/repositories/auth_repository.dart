@@ -2,6 +2,7 @@ import 'package:eventflow_app/features/authentication/data/datasources/auth_remo
 import 'package:eventflow_app/features/authentication/data/models/login_response_model.dart';
 import 'package:eventflow_app/features/authentication/data/models/user_model.dart';
 import 'package:eventflow_app/core/services/token_service.dart';
+import 'package:eventflow_app/core/services/tenant_context_service.dart';
 import 'package:eventflow_app/core/services/guest_session_service.dart';
 import 'package:eventflow_app/core/services/notification_service.dart';
 import 'package:eventflow_app/core/services/demo_data_provider.dart';
@@ -10,6 +11,7 @@ import 'package:eventflow_app/core/storage/storage_service.dart';
 class AuthRepository {
   final AuthRemoteDataSource _remoteDataSource;
   final TokenService _tokenService;
+  final TenantContextService _tenantContext;
   final GuestSessionService _guestSessionService;
   final StorageService _storageService;
   final NotificationService _notificationService;
@@ -17,15 +19,28 @@ class AuthRepository {
   AuthRepository({
     required this._remoteDataSource,
     required this._tokenService,
+    required this._tenantContext,
     required this._guestSessionService,
     required this._storageService,
     required this._notificationService,
   });
 
+  /// Scope subsequent API calls to the tenant this login belongs to.
+  ///
+  /// For OWNER / MANAGER / STAFF / ACCOUNTANT `user.tenantId` is non-null and
+  /// this gives the server an explicit tenant to match against. For
+  /// `SUPER_ADMIN` it is null, so nothing is set and requests stay
+  /// fail-closed exactly like the backend — until a tenant picker ships and
+  /// calls `TenantContextService.setTenantId` directly.
+  Future<void> _applyTenantContext(UserModel user) async {
+    await _tenantContext.setTenantId(user.tenantId);
+  }
+
   Future<LoginResponseModel> login(String email, String password) async {
     final loginResponse = await _remoteDataSource.login(email, password);
     await _tokenService.saveAccessToken(loginResponse.accessToken);
     await _tokenService.saveRefreshToken(loginResponse.refreshToken);
+    await _applyTenantContext(loginResponse.user);
     return loginResponse;
   }
 
@@ -53,6 +68,7 @@ class AuthRepository {
     );
     await _tokenService.saveAccessToken(loginResponse.accessToken);
     await _tokenService.saveRefreshToken(loginResponse.refreshToken);
+    await _applyTenantContext(loginResponse.user);
     return loginResponse;
   }
 
@@ -97,6 +113,13 @@ class AuthRepository {
       await _tokenService.clearTokens();
     } catch (_) {
       // Never block sign-out on secure-storage errors.
+    }
+    try {
+      // No tenant may outlive a session, otherwise the next account on this
+      // device would inherit the previous tenant's scope.
+      await _tenantContext.clear();
+    } catch (_) {
+      // Best effort.
     }
     try {
       await _guestSessionService.endSession();

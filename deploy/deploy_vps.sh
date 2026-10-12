@@ -3,21 +3,40 @@ set -euo pipefail
 
 # ============================================================
 # EventFlow VPS Deployment Script (IP-based, no domain)
-# Run as root: bash deploy_vps.sh
-# VPS: 31.42.125.6
+# Run as root: VPS_IP=<your.server.ip> bash deploy_vps.sh
+#
+# VPS_IP is REQUIRED and must be passed in — this script refuses to
+# guess or hardcode a server address.
+#
+# Frontend model: `next build` + `next start` on 127.0.0.1:3000 behind
+# nginx (deploy/nginx/eventflow-ip.conf). No static out/ directory.
 # ============================================================
 
-VPS_IP="31.42.125.6"
+VPS_IP="${VPS_IP:-}"
+if [ -z "${VPS_IP}" ]; then
+    echo "ERROR: VPS_IP is required (the public IPv4/IPv6 of this server)." >&2
+    echo "  Usage: VPS_IP=203.0.113.10 bash $0" >&2
+    exit 1
+fi
+if ! printf '%s' "${VPS_IP}" | grep -Eq '^[A-Za-z0-9.:-]+$'; then
+    echo "ERROR: VPS_IP '${VPS_IP}' contains unexpected characters." >&2
+    exit 1
+fi
+
 DEPLOY_USER="eventflow"
 DEPLOY_DIR="/home/eventflow"
 BACKEND_DIR="${DEPLOY_DIR}/python/eventflow-api"
-FRONTEND_DIR="${DEPLOY_DIR}/frontend/public_html"
+REPO_DIR="${DEPLOY_DIR}/eventflow"
 MEDIA_DIR="${DEPLOY_DIR}/media"
 LOG_DIR="${BACKEND_DIR}/logs"
+
+# API base URL baked into the frontend at build time (IP mode => http).
+NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL:-http://${VPS_IP}/api/v1}"
 
 echo "============================================"
 echo "  EventFlow VPS Deployment"
 echo "  VPS IP: ${VPS_IP}"
+echo "  API URL: ${NEXT_PUBLIC_API_URL}"
 echo "============================================"
 echo ""
 
@@ -28,7 +47,21 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
     nginx mariadb-server redis-server \
     python3 python3-venv python3-pip \
     python3-dev default-libmysqlclient-dev build-essential \
-    certbot curl git ufw
+    certbot curl git ufw rsync
+
+# Node.js >= 20 (frontend build AND `next start`)
+if ! command -v node >/dev/null 2>&1; then
+    echo "  Node.js not found — installing Node.js 20 (nodesource)..."
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+    DEBIAN_FRONTEND=noninteractive apt-get install -y -qq nodejs
+fi
+NODE_MAJOR=$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)
+if [ "${NODE_MAJOR}" -lt 20 ]; then
+    echo "ERROR: Node $(node -v) is too old — Next.js 16 requires Node >= 20." >&2
+    echo "  Install Node 20+: https://nodejs.org or nodesource setup_20.x" >&2
+    exit 1
+fi
+echo "  Node $(node -v)"
 
 # Step 2: Start and enable services
 echo "[2/16] Starting MySQL and Redis..."
@@ -45,7 +78,6 @@ mysql -e "CREATE USER IF NOT EXISTS 'eventflow'@'localhost' IDENTIFIED BY '${DB_
 mysql -e "GRANT ALL PRIVILEGES ON eventflow.* TO 'eventflow'@'localhost';"
 mysql -e "FLUSH PRIVILEGES;"
 echo "  Database user: eventflow"
-echo "  Database password: ${DB_PASSWORD}"
 
 # Step 4: Create deployment user
 echo "[4/16] Creating deployment user..."
@@ -55,7 +87,7 @@ fi
 
 # Step 5: Create directory structure
 echo "[5/16] Creating directories..."
-mkdir -p "${BACKEND_DIR}" "${FRONTEND_DIR}" "${MEDIA_DIR}" "${LOG_DIR}"
+mkdir -p "${BACKEND_DIR}" "${MEDIA_DIR}" "${LOG_DIR}" "${REPO_DIR}"
 mkdir -p "${MEDIA_DIR}/tenants/logos" "${MEDIA_DIR}/tenants/settings"
 mkdir -p "${MEDIA_DIR}/venues" "${MEDIA_DIR}/invoices/logos"
 mkdir -p "${MEDIA_DIR}/invoices/pdf" "${MEDIA_DIR}/contracts/pdf"
@@ -65,17 +97,17 @@ mkdir -p "${DEPLOY_DIR}/scripts" "${DEPLOY_DIR}/backups/daily" "${DEPLOY_DIR}/ba
 chown -R "${DEPLOY_USER}:${DEPLOY_USER}" "${DEPLOY_DIR}"
 
 # Step 6: Copy project files
-echo "[6/16] Copying project files..."
+echo "[6/16] Copy project files..."
 # Look for the project in common locations
 PROJECT_SRC=""
 for candidate in /tmp/eventflow-deploy /root/eventflow /home/*/eventflow /opt/eventflow; do
-    if [ -d "$candidate/backend" ] || [ -d "$candidate/manage.py" ]; then
+    if [ -d "$candidate/backend" ] || [ -f "$candidate/manage.py" ]; then
         PROJECT_SRC="$candidate"
         break
     fi
 done
 
-if [ -z "$PROJECT_SRC" ]; then
+if [ -z "${PROJECT_SRC}" ]; then
     echo "  ERROR: Cannot find EventFlow project files."
     echo "  Upload your project to /tmp/eventflow-deploy/ first:"
     echo "    scp -r /home/builddastaan/EventFlow root@${VPS_IP}:/tmp/eventflow-deploy/"
@@ -84,34 +116,38 @@ fi
 
 echo "  Found project at: ${PROJECT_SRC}"
 
-# Copy backend
-if [ -d "${PROJECT_SRC}/backend" ]; then
-    rsync -av --exclude='__pycache__' --exclude='*.pyc' --exclude='.env' --exclude='node_modules' \
-        "${PROJECT_SRC}/backend/" "${BACKEND_DIR}/"
-elif [ -f "${PROJECT_SRC}/manage.py" ]; then
-    rsync -av --exclude='__pycache__' --exclude='*.pyc' --exclude='.env' --exclude='node_modules' \
-        "${PROJECT_SRC}/" "${BACKEND_DIR}/"
-fi
-
-# Copy frontend build (if exists)
-if [ -d "${PROJECT_SRC}/frontend-build" ]; then
-    rsync -av "${PROJECT_SRC}/frontend-build/" "${FRONTEND_DIR}/"
-elif [ -d "${PROJECT_SRC}/frontend/out" ]; then
-    rsync -av "${PROJECT_SRC}/frontend/out/" "${FRONTEND_DIR}/"
-elif [ -d "${PROJECT_SRC}/frontend/public_html" ]; then
-    rsync -av "${PROJECT_SRC}/frontend/public_html/" "${FRONTEND_DIR}/"
+# Keep a stable checkout at ${REPO_DIR} — systemd units and the CD script
+# (deploy_production.sh) both run from there.
+if [ "${PROJECT_SRC%/}" != "${REPO_DIR%/}" ]; then
+    rsync -a --delete \
+        --exclude='.git' --exclude='node_modules' --exclude='.next' \
+        --exclude='out' --exclude='venv' --exclude='logs' \
+        --exclude='staticfiles' --exclude='.env' --exclude='media' \
+        --exclude='__pycache__' --exclude='*.pyc' \
+        "${PROJECT_SRC}/" "${REPO_DIR}/"
+    echo "  Project synced to ${REPO_DIR}"
 else
-    echo "  WARNING: No frontend build found. Building frontend..."
-    if [ -d "${PROJECT_SRC}/frontend" ] && command -v npm &>/dev/null; then
-        cd "${PROJECT_SRC}/frontend"
-        npm install --silent
-        npm run build
-        if [ -d "out" ]; then
-            rsync -av out/ "${FRONTEND_DIR}/"
-        fi
-    else
-        echo "  Skipping frontend build (npm not available)."
-    fi
+    echo "  Project already at ${REPO_DIR}"
+fi
+chown -R "${DEPLOY_USER}:${DEPLOY_USER}" "${REPO_DIR}"
+
+# Backend runtime tree (what Gunicorn executes)
+if [ ! -f "${REPO_DIR}/backend/manage.py" ] && [ ! -f "${PROJECT_SRC}/manage.py" ]; then
+    echo "  ERROR: no backend/manage.py found in ${PROJECT_SRC}" >&2
+    exit 1
+fi
+if [ -f "${REPO_DIR}/backend/manage.py" ]; then
+    rsync -a --delete \
+        --exclude='.env' --exclude='venv/' --exclude='logs/' \
+        --exclude='staticfiles/' --exclude='media/' \
+        --exclude='__pycache__/' --exclude='*.pyc' --exclude='*.sqlite3' \
+        "${REPO_DIR}/backend/" "${BACKEND_DIR}/"
+else
+    rsync -a --delete \
+        --exclude='.env' --exclude='venv/' --exclude='logs/' \
+        --exclude='staticfiles/' --exclude='media/' \
+        --exclude='__pycache__/' --exclude='*.pyc' --exclude='*.sqlite3' \
+        "${PROJECT_SRC}/" "${BACKEND_DIR}/"
 fi
 
 # Step 7: Set up Python virtual environment
@@ -130,7 +166,7 @@ if [ ! -f "${BACKEND_DIR}/.env" ]; then
     cat > "${BACKEND_DIR}/.env" << EOF
 DJANGO_SETTINGS_MODULE=config.settings.production
 DJANGO_SECRET_KEY=${SECRET_KEY}
-DJANGO_ALLOWED_HOSTS=${VPS_IP}
+DJANGO_ALLOWED_HOSTS=${VPS_IP},localhost,127.0.0.1
 DJANGO_DEBUG=False
 DB_NAME=eventflow
 DB_USER=eventflow
@@ -142,6 +178,8 @@ ENCRYPTION_KEY=${ENCRYPTION_KEY}
 CORS_ALLOWED_ORIGINS=http://${VPS_IP}
 CSRF_TRUSTED_ORIGINS=http://${VPS_IP}
 DEFAULT_FROM_EMAIL=noreply@eventflow.local
+# Frontend build input for deploy_production.sh (not a secret)
+NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 EOF
     chmod 600 "${BACKEND_DIR}/.env"
     chown "${DEPLOY_USER}:${DEPLOY_USER}" "${BACKEND_DIR}/.env"
@@ -168,210 +206,16 @@ chown -R "${DEPLOY_USER}:${DEPLOY_USER}" "${LOG_DIR}"
 echo "[12/16] Validating deployment..."
 sudo -u "${DEPLOY_USER}" "${BACKEND_DIR}/venv/bin/python" manage.py validate_deployment || true
 
-# Step 13: Install systemd service
-echo "[13/16] Installing systemd service..."
-cat > /etc/systemd/system/eventflow.service << SERVICEEOF
-[Unit]
-Description=EventFlow Django API
-Requires=network.target redis-server.service mariadb.service
-After=network.target redis-server.service mariadb.service
-
-[Service]
-Type=notify
-NotifyAccess=all
-User=${DEPLOY_USER}
-Group=${DEPLOY_USER}
-WorkingDirectory=${BACKEND_DIR}
-ExecStart=${BACKEND_DIR}/venv/bin/gunicorn config.wsgi:application -c gunicorn.conf.py
-ExecReload=/bin/kill -s HUP \$MAINPID
-ExecStop=/bin/kill -s TERM \$MAINPID
-Restart=on-failure
-RestartSec=5
-TimeoutStartSec=60
-TimeoutStopSec=30
-TimeoutReloadSec=30
-
-EnvironmentFile=${BACKEND_DIR}/.env
-
-NoNewPrivileges=yes
-ProtectSystem=strict
-ProtectHome=read-only
-ReadWritePaths=${MEDIA_DIR} ${BACKEND_DIR}/staticfiles ${LOG_DIR}
-PrivateTmp=yes
-ProtectKernelTunables=yes
-ProtectKernelModules=yes
-ProtectControlGroups=yes
-
-LimitNOFILE=65535
-LimitNPROC=4096
-
-[Install]
-WantedBy=multi-user.target
-SERVICEEOF
-
+# Step 13: Install systemd services (from the repo — single source of truth)
+echo "[13/16] Installing systemd services..."
+cp "${REPO_DIR}/deploy/systemd/eventflow.service" /etc/systemd/system/
+cp "${REPO_DIR}/deploy/systemd/eventflow-frontend.service" /etc/systemd/system/
 systemctl daemon-reload
-systemctl enable eventflow
+systemctl enable eventflow eventflow-frontend
 
-# Step 14: Configure Nginx
+# Step 14: Configure Nginx (IP-based config, no placeholders)
 echo "[14/16] Configuring Nginx..."
-cat > /etc/nginx/sites-available/eventflow << 'NGINXEOF'
-server_tokens off;
-
-upstream eventflow_backend {
-    server 127.0.0.1:8000 fail_timeout=0;
-    keepalive 32;
-}
-
-limit_req_zone $binary_remote_addr zone=api_auth:10m rate=10r/s;
-limit_req_zone $binary_remote_addr zone=api_general:10m rate=30r/s;
-limit_req_zone $binary_remote_addr zone=webhook:10m rate=20r/s;
-
-server {
-    listen 80 default_server;
-    listen [::]:80 default_server;
-    server_name _;
-
-    add_header X-Frame-Options "DENY" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-
-    client_max_body_size 10M;
-
-    location ~ /\.(env|git|htaccess|htpasswd|svn) {
-        deny all;
-        return 404;
-    }
-
-    location ~* \.(php|php[0-9s]*|phtml|pht|phps|cgi|pl|py|asp|aspx|jsp|sh|bash|exe|bat|cmd|com|msi|scr|vbs|vbe|ps1|dll|hta)$ {
-        deny all;
-        return 404;
-    }
-
-    root /home/eventflow/frontend/public_html;
-    index index.html;
-
-    location / {
-        try_files $uri $uri/ @api;
-    }
-
-    location @api {
-        limit_req zone=api_general burst=50 nodelay;
-        proxy_pass http://eventflow_backend;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header X-Request-ID $request_id;
-        proxy_redirect off;
-        proxy_buffering off;
-        proxy_read_timeout 120s;
-        proxy_connect_timeout 5s;
-    }
-
-    location /api/v1/auth/ {
-        limit_req zone=api_auth burst=10 nodelay;
-        proxy_pass http://eventflow_backend;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header X-Request-ID $request_id;
-        proxy_redirect off;
-        proxy_buffering off;
-    }
-
-    location /api/v1/payments/webhook/ {
-        limit_req zone=webhook burst=20 nodelay;
-        proxy_pass http://eventflow_backend;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header X-Request-ID $request_id;
-        proxy_redirect off;
-        proxy_buffering off;
-    }
-
-    location /health/ {
-        proxy_pass http://eventflow_backend;
-        proxy_set_header Host $host;
-        access_log off;
-    }
-
-    location /ready/ {
-        proxy_pass http://eventflow_backend;
-        proxy_set_header Host $host;
-        access_log off;
-    }
-
-    location /live/ {
-        proxy_pass http://eventflow_backend;
-        proxy_set_header Host $host;
-        access_log off;
-    }
-
-    location /admin/ {
-        proxy_pass http://eventflow_backend;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    location /_next/static/ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-        access_log off;
-    }
-
-    location ~* \.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
-        expires 30d;
-        add_header Cache-Control "public, immutable";
-        access_log off;
-    }
-
-    gzip on;
-    gzip_vary on;
-    gzip_proxied any;
-    gzip_comp_level 6;
-    gzip_min_length 1000;
-    gzip_types text/plain text/css application/json application/javascript text/xml application/xml text/javascript image/svg+xml;
-}
-
-server {
-    listen 8080;
-    listen [::]:8080;
-    server_name _;
-
-    add_header X-Frame-Options "DENY" always;
-    add_header X-Content-Type-Options "nosniff" always;
-
-    root /home/eventflow/media;
-
-    location ~ /\.(env|git|htaccess|htpasswd|svn) {
-        deny all;
-        return 404;
-    }
-
-    location ~* \.(jpg|jpeg|png|gif|webp|pdf)$ {
-        expires 30d;
-        add_header Cache-Control "public, immutable";
-        access_log off;
-    }
-
-    location ~* \.(php|php[0-9s]*|phtml|pht|phps|cgi|pl|py|asp|aspx|jsp|sh|bash|exe|bat|cmd|com|msi|scr|vbs|vbe|ps1|dll|hta)$ {
-        deny all;
-        return 404;
-    }
-
-    autoindex off;
-
-    location / {
-        try_files $uri $uri/ =404;
-    }
-}
-NGINXEOF
-
+cp "${REPO_DIR}/deploy/nginx/eventflow-ip.conf" /etc/nginx/sites-available/eventflow
 ln -sf /etc/nginx/sites-available/eventflow /etc/nginx/sites-enabled/eventflow
 rm -f /etc/nginx/sites-enabled/default
 
@@ -381,6 +225,7 @@ if nginx -t 2>&1; then
 else
     echo "  ERROR: Nginx config test failed!"
     nginx -t
+    exit 1
 fi
 
 # Step 15: Configure firewall
@@ -390,18 +235,43 @@ ufw default deny incoming
 ufw default allow outgoing
 ufw allow ssh
 ufw allow 80/tcp
+ufw allow 443/tcp
 ufw allow 8080/tcp
 ufw --force enable
 
-# Step 16: Set permissions and start
-echo "[16/16] Final permissions and start..."
+# Step 16: Build frontend, set permissions, start services
+echo "[16/16] Building frontend and starting services..."
+export NEXT_PUBLIC_API_URL
+cd "${REPO_DIR}/frontend"
+sudo -u "${DEPLOY_USER}" npm ci --silent
+sudo -u "${DEPLOY_USER}" npm run build
+if [ ! -f ".next/BUILD_ID" ]; then
+    echo "  ERROR: frontend build produced no .next/BUILD_ID" >&2
+    exit 1
+fi
+echo "  Frontend built (.next/BUILD_ID=$(cat .next/BUILD_ID))"
+
+# Backup helpers referenced by the crontab
+install -m 750 -o "${DEPLOY_USER}" -g "${DEPLOY_USER}" \
+    "${REPO_DIR}/deploy/scripts/backup.sh" "${DEPLOY_DIR}/scripts/backup.sh"
+install -m 750 -o "${DEPLOY_USER}" -g "${DEPLOY_USER}" \
+    "${REPO_DIR}/deploy/scripts/restore.sh" "${DEPLOY_DIR}/scripts/restore.sh"
+
 chown -R "${DEPLOY_USER}:${DEPLOY_USER}" "${BACKEND_DIR}"
+chown -R "${DEPLOY_USER}:${DEPLOY_USER}" "${REPO_DIR}"
 chown -R "${DEPLOY_USER}:${DEPLOY_USER}" "${MEDIA_DIR}"
 chown -R "${DEPLOY_USER}:${DEPLOY_USER}" "${LOG_DIR}"
 chmod 600 "${BACKEND_DIR}/.env"
 chmod 750 "${LOG_DIR}"
 
+# Cron jobs (reminders, reports, backups)
+if command -v crontab >/dev/null 2>&1; then
+    sudo -u "${DEPLOY_USER}" crontab "${REPO_DIR}/deploy/scripts/crontab.txt"
+    echo "  Crontab installed."
+fi
+
 systemctl restart eventflow
+systemctl restart eventflow-frontend
 
 # Verification
 echo ""
@@ -411,7 +281,7 @@ echo "============================================"
 echo ""
 
 echo "Service Status:"
-for svc in eventflow nginx mariadb redis-server; do
+for svc in eventflow eventflow-frontend nginx mariadb redis-server; do
     if systemctl is-active --quiet "$svc" 2>/dev/null; then
         echo "  [OK] $svc"
     else
@@ -420,22 +290,24 @@ for svc in eventflow nginx mariadb redis-server; do
 done
 
 echo ""
-echo "Quick Verification:"
-echo "  curl -s http://${VPS_IP}/health/ && echo"
-echo "  curl -s http://${VPS_IP}:8080/"
-echo ""
+echo "Direct health checks (bypass nginx):"
+STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8000/live/ || echo 000)
+echo "  gunicorn /live/  -> ${STATUS} (expect 200)"
+STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/ || echo 000)
+echo "  next start /     -> ${STATUS} (expect 200)"
 
+echo ""
 echo "Access URLs:"
 echo "  Frontend + API: http://${VPS_IP}/"
 echo "  Django Admin:   http://${VPS_IP}/admin/"
-echo "  Media files:    http://${VPS_IP}:8080/"
+echo "  Media files:    http://${VPS_IP}:8080/ (public trees only)"
 echo "  Health check:   http://${VPS_IP}/health/"
 echo "  Readiness:      http://${VPS_IP}/ready/"
 echo ""
 
-echo "IMPORTANT: Save these credentials:"
+echo "IMPORTANT: Save these credentials (also in ${BACKEND_DIR}/.env):"
 echo "  DB_USER=eventflow"
-echo "  DB_PASSWORD=${DB_PASSWORD}"
+echo "  DB_PASSWORD=<see ${BACKEND_DIR}/.env>"
 echo ""
 echo "To create a superuser:"
 echo "  cd ${BACKEND_DIR}"

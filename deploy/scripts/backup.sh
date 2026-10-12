@@ -5,10 +5,10 @@ set -euo pipefail
 # Schedule via cron: 0 2 * * * /home/eventflow/scripts/backup.sh
 # Keeps 7 daily backups, 4 weekly backups
 
-BACKUP_DIR="/home/eventflow/backups"
-DB_NAME="eventflow"
-DB_USER="eventflow"
-MEDIA_DIR="/home/eventflow/media"
+BACKUP_DIR="${BACKUP_DIR:-/home/eventflow/backups}"
+DB_NAME="${DB_NAME:-eventflow}"
+DB_USER="${DB_USER:-eventflow}"
+MEDIA_DIR="${MEDIA_DIR:-/home/eventflow/media}"
 LOG_DIR="/home/eventflow/python/eventflow-api/logs"
 RETENTION_DAYS=7
 WEEKLY_RETENTION=4
@@ -24,6 +24,46 @@ DATE=$(date +%Y%m%d_%H%M%S)
 DAILY_DIR="${BACKUP_DIR}/daily"
 WEEKLY_DIR="${BACKUP_DIR}/weekly"
 
+# Database credentials from the backend .env (mysqldump under cron has no
+# interactive prompt and no ~/.my.cnf). The password goes into a 600 temp
+# defaults file that is removed on exit — never on argv, never echoed.
+ENV_FILE="${ENV_FILE:-/home/eventflow/python/eventflow-api/.env}"
+DB_HOST="${DB_HOST:-127.0.0.1}"
+DB_PORT="${DB_PORT:-3306}"
+
+MYSQL_CNF=""
+cleanup() { if [ -n "${MYSQL_CNF}" ]; then rm -f "${MYSQL_CNF}"; fi; }
+trap cleanup EXIT
+
+if [ -f "${ENV_FILE}" ]; then
+    ENV_DB_USER=$(sed -n 's/^DB_USER=//p' "${ENV_FILE}" | tail -1)
+    ENV_DB_NAME=$(sed -n 's/^DB_NAME=//p' "${ENV_FILE}" | tail -1)
+    ENV_DB_PASS=$(sed -n 's/^DB_PASSWORD=//p' "${ENV_FILE}" | tail -1)
+    ENV_DB_HOST=$(sed -n 's/^DB_HOST=//p' "${ENV_FILE}" | tail -1)
+    ENV_DB_PORT=$(sed -n 's/^DB_PORT=//p' "${ENV_FILE}" | tail -1)
+    DB_USER="${DB_USER_OVERRIDE:-${ENV_DB_USER:-${DB_USER}}}"
+    DB_NAME="${ENV_DB_NAME:-${DB_NAME}}"
+    DB_PASSWORD="${ENV_DB_PASS}"
+    DB_HOST="${ENV_DB_HOST:-${DB_HOST}}"
+    DB_PORT="${ENV_DB_PORT:-${DB_PORT}}"
+fi
+
+MYSQL_ARGS=()
+if [ -n "${DB_PASSWORD:-}" ]; then
+    MYSQL_CNF=$(mktemp)
+    chmod 600 "${MYSQL_CNF}"
+    {
+        echo "[client]"
+        echo "user=${DB_USER}"
+        echo "password=${DB_PASSWORD}"
+        echo "host=${DB_HOST}"
+        echo "port=${DB_PORT}"
+    } > "${MYSQL_CNF}"
+    MYSQL_ARGS=(--defaults-extra-file="${MYSQL_CNF}")
+else
+    echo "[$(date)] WARNING: no DB_PASSWORD found in ${ENV_FILE} — trying passwordless auth." >&2
+fi
+
 mkdir -p "${DAILY_DIR}" "${WEEKLY_DIR}"
 
 echo "[$(date)] Starting backup..."
@@ -31,7 +71,7 @@ echo "[$(date)] Starting backup..."
 # 1. Database backup
 # --skip-lock avoids table locking issues with mixed InnoDB/MyISAM
 echo "[$(date)] Backing up database..."
-mysqldump -u "${DB_USER}" --skip-lock --routines --triggers \
+mysqldump "${MYSQL_ARGS[@]+"${MYSQL_ARGS[@]}"}" --skip-lock --routines --triggers \
     "${DB_NAME}" | gzip > "${DAILY_DIR}/db_${DATE}.sql.gz"
 
 # 2. Media backup

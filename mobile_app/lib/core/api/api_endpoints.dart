@@ -1,8 +1,16 @@
+import 'package:eventflow_app/core/config/app_config.dart';
+
 class ApiEndpoints {
-  static const String baseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: 'http://31.42.125.6/api/v1/',
-  );
+  /// Single source of truth for the API base URL.
+  ///
+  /// Owned by [AppConfig.apiBaseUrl]; this getter exists so the 150+ endpoint
+  /// paths below keep their call sites unchanged. Do NOT redeclare a
+  /// `String.fromEnvironment` here — a second declaration is exactly how the
+  /// app ended up with two conflicting defaults (this file previously
+  /// defaulted to a plaintext raw IP while AppConfig defaulted to HTTPS).
+  ///
+  /// Override at build time with: `--dart-define=API_BASE_URL=https://...`
+  static String get baseUrl => AppConfig.apiBaseUrl;
 
   // Auth
   static const String login = 'auth/login/';

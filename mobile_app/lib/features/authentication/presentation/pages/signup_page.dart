@@ -388,9 +388,12 @@ class _SignupPageState extends State<SignupPage> {
                     },
                   ),
                   const SizedBox(height: DesignSystem.spacing6),
-                  // Sign in link
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  // Sign in link. Wrap (not Row) so on narrow screens the
+                  // link drops to a centered second line instead of
+                  // overflowing horizontally.
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       Text(
                         'Already have an account? ',

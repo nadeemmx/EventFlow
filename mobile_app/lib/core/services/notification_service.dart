@@ -12,8 +12,20 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 class NotificationService {
   final ApiClient _apiClient;
-  late final FirebaseMessaging _messaging;
+  FirebaseMessaging? _messaging;
   final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
+
+  /// Whether Firebase push is usable on this device.
+  ///
+  /// False when the native Firebase config files are missing or invalid —
+  /// `android/app/google-services.json` and
+  /// `ios/Runner/GoogleService-Info.plist`. See `.env.example` for what is
+  /// needed to turn push on.
+  ///
+  /// When false the service is a deliberate no-op: no crash, no FCM token,
+  /// no remote messages. Local notifications still work.
+  bool _pushAvailable = false;
+  bool get pushAvailable => _pushAvailable;
 
   String? _fcmToken;
   String? get fcmToken => _fcmToken;
@@ -37,11 +49,38 @@ class NotificationService {
   });
 
   Future<void> initialize() async {
-    await Firebase.initializeApp();
-    _messaging = FirebaseMessaging.instance;
+    // Local notifications do not depend on Firebase and are always safe to
+    // set up, so they are configured regardless of push availability.
+    await _initializeLocalNotifications();
 
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    // Firebase requires the native config files to be present. Without them
+    // `Firebase.initializeApp()` throws. Degrade to a no-op rather than
+    // crashing the app on cold start (or leaving `_messaging` in a
+    // half-initialised `late` state that would throw on first use).
+    try {
+      await Firebase.initializeApp();
+      _messaging = FirebaseMessaging.instance;
+      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+      _pushAvailable = true;
+    } catch (_) {
+      // Missing/invalid google-services.json or GoogleService-Info.plist.
+      _pushAvailable = false;
+      _messaging = null;
+      _fcmToken = null;
+      return;
+    }
 
+    // The OS permission prompt is intentionally NOT requested here: cold start
+    // runs before any UI can explain why notifications are wanted. It is
+    // requested from a user-facing opt-in point instead — see
+    // [requestPermission] (onboarding completion and Settings).
+    await _getToken();
+    _setupForegroundHandler();
+    _setupTapHandler();
+    _setupTokenRefreshHandler();
+  }
+
+  Future<void> _initializeLocalNotifications() async {
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
     // request*Permission must stay false so iOS does not show the system
     // prompt during cold start (before any UI). The prompt is raised from a
@@ -55,15 +94,6 @@ class NotificationService {
       const InitializationSettings(android: androidSettings, iOS: iosSettings),
       onDidReceiveNotificationResponse: _onNotificationTap,
     );
-
-    // The OS permission prompt is intentionally NOT requested here: cold start
-    // runs before any UI can explain why notifications are wanted. It is
-    // requested from a user-facing opt-in point instead — see
-    // [requestPermission] (onboarding completion and Settings).
-    await _getToken();
-    _setupForegroundHandler();
-    _setupTapHandler();
-    _setupTokenRefreshHandler();
   }
 
   void dispose() {
@@ -74,7 +104,9 @@ class NotificationService {
   }
 
   Future<void> _requestPermissions() async {
-    await _messaging.requestPermission(
+    final messaging = _messaging;
+    if (messaging == null) return;
+    await messaging.requestPermission(
       alert: true,
       badge: true,
       sound: true,
@@ -89,10 +121,14 @@ class NotificationService {
   /// never from [initialize] on cold start.
   ///
   /// Returns true when the user granted (or provisionally granted) permission.
+  /// Returns false immediately when push is unavailable (see [pushAvailable]).
   Future<bool> requestPermission() async {
+    if (!_pushAvailable) return false;
     try {
       await _requestPermissions();
-      final settings = await _messaging.getNotificationSettings();
+      final messaging = _messaging;
+      if (messaging == null) return false;
+      final settings = await messaging.getNotificationSettings();
       final status = settings.authorizationStatus;
       final granted = status == AuthorizationStatus.authorized ||
           status == AuthorizationStatus.provisional;
@@ -107,9 +143,16 @@ class NotificationService {
   }
 
   Future<void> _getToken() async {
-    _fcmToken = await _messaging.getToken();
-    if (_fcmToken != null) {
-      await _registerToken(_fcmToken!);
+    if (!_pushAvailable) return;
+    try {
+      final messaging = _messaging;
+      if (messaging == null) return;
+      _fcmToken = await messaging.getToken();
+      if (_fcmToken != null) {
+        await _registerToken(_fcmToken!);
+      }
+    } catch (_) {
+      // Token fetch can fail transiently; push stays non-fatal.
     }
   }
 
@@ -126,16 +169,25 @@ class NotificationService {
   }
 
   void _setupForegroundHandler() {
+    // `onMessage` is a static member of FirebaseMessaging; the null check on
+    // _messaging is what gates on push being available.
+    if (_messaging == null) return;
     _onMessageSub = FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
   }
 
   void _setupTapHandler() {
-    _onMessageOpenedAppSub = FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
-    _messaging.getInitialMessage().then(_handleNotificationTap);
+    final messaging = _messaging;
+    if (messaging == null) return;
+    // `onMessageOpenedApp` is static; `getInitialMessage` is an instance call.
+    _onMessageOpenedAppSub =
+        FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
+    messaging.getInitialMessage().then(_handleNotificationTap);
   }
 
   void _setupTokenRefreshHandler() {
-    _onTokenRefreshSub = _messaging.onTokenRefresh.listen((token) {
+    final messaging = _messaging;
+    if (messaging == null) return;
+    _onTokenRefreshSub = messaging.onTokenRefresh.listen((token) {
       _fcmToken = token;
       _registerToken(token);
     });
@@ -198,7 +250,14 @@ class NotificationService {
   }
 
   Future<void> deleteToken() async {
-    await _messaging.deleteToken();
-    _fcmToken = null;
+    if (!_pushAvailable) return;
+    try {
+      final messaging = _messaging;
+      if (messaging == null) return;
+      await messaging.deleteToken();
+      _fcmToken = null;
+    } catch (_) {
+      // Best effort — never block sign-out on push teardown.
+    }
   }
 }

@@ -1,7 +1,23 @@
 import axios from "axios";
 
+// NEXT_PUBLIC_API_URL is inlined at build time. In development it may be
+// absent (fall back to the local Django dev server); in a production build
+// next.config.mjs guarantees it is set, so never fall back to localhost there.
+const apiBaseUrl =
+  process.env.NEXT_PUBLIC_API_URL ||
+  (process.env.NODE_ENV !== "production"
+    ? "http://localhost:8000/api/v1"
+    : undefined);
+
+if (!apiBaseUrl) {
+  throw new Error(
+    "NEXT_PUBLIC_API_URL is missing from this production build. " +
+      "Rebuild with frontend/.env.production (or NEXT_PUBLIC_API_URL exported)."
+  );
+}
+
 const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1",
+  baseURL: apiBaseUrl,
   headers: { "Content-Type": "application/json" },
   timeout: 30000, // 30 second default timeout
 });

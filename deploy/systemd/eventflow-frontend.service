@@ -1,0 +1,41 @@
+[Unit]
+Description=EventFlow Next.js frontend (next start)
+Wants=network.target
+After=network.target
+
+[Service]
+Type=simple
+User=eventflow
+Group=eventflow
+WorkingDirectory=/home/eventflow/eventflow/frontend
+# Invoke Next's entry point directly (not `npm run`) so the service never
+# touches ~/.npm caches, which are read-only under ProtectHome=read-only.
+ExecStart=/usr/bin/env node node_modules/next/dist/bin/next start
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=60
+TimeoutStopSec=30
+
+# next start honours PORT/HOSTNAME; bind to loopback only — nginx terminates
+# TLS and proxies to 127.0.0.1:3000. NEXT_PUBLIC_API_URL is baked in at build
+# time; EnvironmentFile only matters for runtime knobs (PORT/HOSTNAME).
+Environment=PORT=3000
+Environment=HOSTNAME=127.0.0.1
+EnvironmentFile=-/home/eventflow/eventflow/frontend/.env.production
+
+# Security hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/eventflow/eventflow/frontend/.next
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+
+# Resource limits
+LimitNOFILE=65535
+LimitNPROC=4096
+
+[Install]
+WantedBy=multi-user.target

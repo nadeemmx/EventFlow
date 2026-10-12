@@ -6,6 +6,7 @@ import 'package:mocktail/mocktail.dart';
 
 import 'package:eventflow_app/core/services/guest_session_service.dart';
 import 'package:eventflow_app/core/services/notification_service.dart';
+import 'package:eventflow_app/core/services/tenant_context_service.dart';
 import 'package:eventflow_app/core/services/token_service.dart';
 import 'package:eventflow_app/core/storage/storage_service.dart';
 import 'package:eventflow_app/features/authentication/data/datasources/auth_remote_data_source.dart';
@@ -17,6 +18,8 @@ class MockTokenService extends Mock implements TokenService {}
 
 class MockNotificationService extends Mock implements NotificationService {}
 
+class MockTenantContextService extends Mock implements TenantContextService {}
+
 void main() {
   setUpAll(() {
     registerFallbackValue('');
@@ -26,6 +29,7 @@ void main() {
     late MockAuthRemoteDataSource remote;
     late MockTokenService tokenService;
     late MockNotificationService notificationService;
+    late MockTenantContextService tenantContextService;
     late StorageService storageService;
     late GuestSessionService guestSessionService;
     late AuthRepository repository;
@@ -47,6 +51,7 @@ void main() {
       remote = MockAuthRemoteDataSource();
       tokenService = MockTokenService();
       notificationService = MockNotificationService();
+      tenantContextService = MockTenantContextService();
 
       order = <String>[];
       revokedToken = null;
@@ -56,6 +61,7 @@ void main() {
       when(() => tokenService.clearTokens()).thenAnswer((_) async {
         order.add('clearTokens');
       });
+      when(() => tenantContextService.clear()).thenAnswer((_) async {});
       when(() => notificationService.deleteToken()).thenAnswer((_) async {
         order.add('deleteToken');
       });
@@ -67,6 +73,7 @@ void main() {
       repository = AuthRepository(
         remoteDataSource: remote,
         tokenService: tokenService,
+        tenantContext: tenantContextService,
         guestSessionService: guestSessionService,
         storageService: storageService,
         notificationService: notificationService,

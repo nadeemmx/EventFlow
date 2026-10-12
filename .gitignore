@@ -2,6 +2,26 @@
 .env
 .env.*
 !.env.example
+!.env.production.example
+
+# Local-only settings (DEBUG=True, ALLOWED_HOSTS=*) - never commit
+backend/config/settings/local.py
+
+# Agent / tooling artifacts (local, not application source)
+.agentic-qe/
+.claude/
+.mcp.json
+.playwright-mcp/
+CLAUDE.md
+
+# Scratch reports
+MOBILE-*.md
+mobile-fix-progress.md
+Task Run EventFlow Frontend.md
+
+# Test run artifacts
+backend/reports/coverage.json
+backend/reports/full_test_run.log
 
 # Python
 __pycache__/

@@ -16,6 +16,14 @@ ALLOWED_HOSTS = config(
     default=".eventflow.com,api.eventflow.com",
     cast=Csv(),
 )
+# Loopback is always allowed so local health checks and nginx->gunicorn
+# requests with Host: 127.0.0.1 (curl http://127.0.0.1:8000/live/) never get
+# DisallowedHost 400s. Public hosts still come exclusively from the env var,
+# so this does not widen exposure beyond the server itself.
+for _loopback in ("127.0.0.1", "localhost", "::1"):
+    if _loopback not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS = [*ALLOWED_HOSTS, _loopback]
+
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # CSRF trusted origins for the frontend domain
@@ -64,7 +72,10 @@ CSRF_COOKIE_SAMESITE = "Lax"
 SECURE_SSL_REDIRECT = False  # handled by web server
 SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-SECURE_HSTS_PRELOAD = True
+# preload is deliberately off: entries are effectively irreversible and
+# require EVERY subdomain to be HTTPS-ready before submission. Opt in later
+# with SECURE_HSTS_PRELOAD=true once that is verified.
+SECURE_HSTS_PRELOAD = config("SECURE_HSTS_PRELOAD", default=False, cast=bool)
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_BROWSER_XSS_FILTER = True
 X_FRAME_OPTIONS = "DENY"

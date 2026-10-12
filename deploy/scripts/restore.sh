@@ -24,13 +24,52 @@ DAILY_DIR="${BACKUP_DIR}/daily"
 DB_USER="${DB_USER:-eventflow}"
 MEDIA_DIR="${MEDIA_DIR:-/home/eventflow/media}"
 MYSQL_BIN="${MYSQL_BIN:-mysql}"
+ENV_FILE="${ENV_FILE:-/home/eventflow/python/eventflow-api/.env}"
+
+# Client credentials from the backend .env, passed via a 600-temp
+# --defaults-extra-file (never on argv, never echoed). Built lazily by
+# setup_client() so read-only actions (--list/--verify/--help) stay quiet;
+# the EXIT trap below always removes the temp file.
+MYSQL_CNF=""
+MYSQL_ARGS=()
+client_cleanup() { if [ -n "${MYSQL_CNF}" ]; then rm -f "${MYSQL_CNF}"; fi; }
+trap client_cleanup EXIT
+
+setup_client() {
+    if [ "${#MYSQL_ARGS[@]}" -gt 0 ]; then
+        return 0
+    fi
+    if [ -f "${ENV_FILE}" ]; then
+        ENV_USER=$(sed -n 's/^DB_USER=//p' "${ENV_FILE}" | tail -1)
+        ENV_PASS=$(sed -n 's/^DB_PASSWORD=//p' "${ENV_FILE}" | tail -1)
+        ENV_HOST=$(sed -n 's/^DB_HOST=//p' "${ENV_FILE}" | tail -1)
+        ENV_PORT=$(sed -n 's/^DB_PORT=//p' "${ENV_FILE}" | tail -1)
+        if [ -n "${ENV_USER}" ]; then DB_USER="${ENV_USER}"; fi
+        if [ -n "${ENV_PASS}" ]; then
+            MYSQL_CNF=$(mktemp)
+            chmod 600 "${MYSQL_CNF}"
+            {
+                echo "[client]"
+                echo "user=${DB_USER}"
+                echo "password=${ENV_PASS}"
+                if [ -n "${ENV_HOST}" ]; then echo "host=${ENV_HOST}"; fi
+                if [ -n "${ENV_PORT}" ]; then echo "port=${ENV_PORT}"; fi
+            } > "${MYSQL_CNF}"
+            MYSQL_ARGS=(--defaults-extra-file="${MYSQL_CNF}")
+        fi
+    fi
+    if [ "${#MYSQL_ARGS[@]}" -eq 0 ]; then
+        MYSQL_ARGS=(-u "${DB_USER}")
+        echo "NOTE: no DB_PASSWORD in ${ENV_FILE} — trying passwordless auth." >&2
+    fi
+}
 
 die()  { echo "ERROR: $*" >&2; exit 1; }
 fail() { echo "ERROR: $*" >&2; exit 3; }
 refuse(){ echo "REFUSED: $*" >&2; exit 2; }
 
 usage() {
-    sed -n '3,22p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '3,20p' "$0" | sed 's/^# \{0,1\}//'
     exit 1
 }
 
@@ -43,8 +82,14 @@ verify_archive() {
     esac
     gzip -t "$f" 2>/dev/null || fail "gzip integrity check FAILED: $f"
     # For a DB dump, also confirm it actually decompresses to SQL, not garbage.
+    # (`|| true` because head/grep close the pipe early and pipefail would
+    # otherwise report SIGPIPE as a corrupt archive.)
     if [[ "$f" == *.sql.gz ]]; then
-        gunzip -c "$f" | head -c 512 | grep -q . || fail "archive decompresses to nothing: $f"
+        local sample
+        sample=$(gunzip -c "$f" 2>/dev/null | head -c 512 || true)
+        if ! grep -q . <<< "${sample}"; then
+            fail "archive decompresses to nothing: $f"
+        fi
     fi
     echo "OK: $f passed integrity checks"
 }
@@ -60,6 +105,7 @@ list_backups() {
 restore_db() {
     local src="$1" target_db="$2" dry_run="${3:-}"
 
+    setup_client
     verify_archive "$src"
 
     if [ "${dry_run}" != "--dry-run" ]; then
@@ -69,16 +115,16 @@ restore_db() {
 
     echo "Restoring $(basename "$src") -> database '${target_db}'..."
     if [ "${dry_run}" = "--dry-run" ]; then
-        echo "[dry-run] would execute: gunzip -c $src | ${MYSQL_BIN} -u ${DB_USER} ${target_db}"
+        echo "[dry-run] would execute: gunzip -c ${src} | ${MYSQL_BIN} <client-auth> ${target_db}"
         # Count statements without executing, as a sanity signal.
         echo "[dry-run] uncompressed bytes: $(gunzip -c "$src" | wc -c)"
         return 0
     fi
 
-    gunzip -c "$src" | "${MYSQL_BIN}" -u "${DB_USER}" "${target_db}"
+    gunzip -c "$src" | "${MYSQL_BIN}" "${MYSQL_ARGS[@]}" "${target_db}"
     echo "Restore complete into '${target_db}'."
     echo "Rehearsal checklist:"
-    echo "  1. ${MYSQL_BIN} -u ${DB_USER} -e 'SHOW TABLES;' ${target_db} | wc -l   # expect > 0"
+    echo "  1. ${MYSQL_BIN} <client-auth> -e 'SHOW TABLES;' ${target_db} | wc -l   # expect > 0"
     echo "  2. Point a staging app at ${target_db} and run the smoke test."
 }
 

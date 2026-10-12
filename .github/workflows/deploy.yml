@@ -55,8 +55,11 @@ jobs:
           SSH_HOST: ${{ secrets.VPS_HOST }}
           SSH_USER: ${{ secrets.VPS_USER }}
         run: |
+          # Talk to the processes directly (gunicorn :8000, next start
+          # :3000) so the check does not depend on nginx server_name /
+          # Host headers. 127.0.0.1 is always in ALLOWED_HOSTS.
           ssh -p "$SSH_PORT" -i "$SSH_KEY" "${SSH_USER}@${SSH_HOST}" \
-            "bash /home/eventflow/eventflow/deploy/scripts/smoke_test.sh http://127.0.0.1 http://127.0.0.1 http://127.0.0.1:8080"
+            "bash /home/eventflow/eventflow/deploy/scripts/smoke_test.sh http://127.0.0.1:8000 http://127.0.0.1:3000 http://127.0.0.1:8080"
 
       - name: Report success
         if: success()

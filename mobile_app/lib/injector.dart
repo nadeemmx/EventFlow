@@ -4,6 +4,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 
 import 'package:eventflow_app/core/api/api_client.dart';
 import 'package:eventflow_app/core/services/token_service.dart';
+import 'package:eventflow_app/core/services/tenant_context_service.dart';
 import 'package:eventflow_app/core/services/guest_session_service.dart';
 import 'package:eventflow_app/core/services/notification_service.dart';
 import 'package:eventflow_app/core/services/image_picker_service.dart';
@@ -53,11 +54,15 @@ Future<void> initializeDependencies() async {
   // Core
   sl.registerLazySingleton<FlutterSecureStorage>(() => const FlutterSecureStorage());
   sl.registerLazySingleton<TokenService>(() => TokenService(storage: sl()));
+  sl.registerLazySingleton<TenantContextService>(() => TenantContextService(storage: sl()));
   sl.registerLazySingleton<StorageService>(() => StorageService());
   sl.registerLazySingleton<GuestSessionService>(() => GuestSessionService());
   sl.registerLazySingleton<Connectivity>(() => Connectivity());
   sl.registerLazySingleton<NetworkInfo>(() => NetworkInfo(connectivity: sl()));
-  sl.registerLazySingleton<ApiClient>(() => ApiClient(tokenService: sl()));
+  sl.registerLazySingleton<ApiClient>(() => ApiClient(
+        tokenService: sl(),
+        tenantContext: sl(),
+      ));
   sl.registerLazySingleton<AppRouter>(() => AppRouter(tokenService: sl()));
   sl.registerLazySingleton<NotificationService>(() => NotificationService(
     apiClient: sl(),
@@ -69,6 +74,7 @@ Future<void> initializeDependencies() async {
   sl.registerLazySingleton<AuthRepository>(() => AuthRepository(
         remoteDataSource: sl(),
         tokenService: sl(),
+        tenantContext: sl(),
         guestSessionService: sl(),
         storageService: sl(),
         notificationService: sl(),
@@ -130,4 +136,8 @@ Future<void> initializeDependencies() async {
   sl.registerLazySingleton<NotificationRemoteDataSource>(() => NotificationRemoteDataSource(apiClient: sl()));
   sl.registerLazySingleton<NotificationRepository>(() => NotificationRepository(remoteDataSource: sl()));
   sl.registerFactory<NotificationBloc>(() => NotificationBloc(repository: sl()));
+
+  // Restore any persisted tenant selection so requests are scoped correctly
+  // from the first frame after a cold start.
+  await sl<TenantContextService>().load();
 }

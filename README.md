@@ -206,7 +206,7 @@ EventFlow is a **production-grade, multi-tenant SaaS platform** purpose-built fo
 
 | Technology | Purpose |
 |------------|---------|
-| **Next.js 14.2** | React framework with static export |
+| **Next.js 14.2** | React framework (`next build` + `next start`) |
 | **React 18.3** | UI library |
 | **TypeScript 5.5** | Type safety |
 | **TailwindCSS 3.4** | Utility-first CSS |
@@ -292,9 +292,9 @@ graph TB
 ### Deployment Topology
 
 ```
-yourdomain.com         → Next.js static export (public_html/)
-api.yourdomain.com     → Django DRF API via Passenger WSGI
-media.yourdomain.com   → Media files (public_html/media/)
+yourdomain.com         → Next.js SSR (`next start` on 127.0.0.1:3000, proxied by nginx)
+api.yourdomain.com     → Django DRF API (gunicorn on 127.0.0.1:8000, proxied by nginx)
+media.yourdomain.com   → Allowlisted media only (tenants/logos, venues, …); rest → 404
 ```
 
 ---
@@ -390,7 +390,7 @@ media.yourdomain.com   → Media files (public_html/media/)
 │
 ├── frontend/                 # Next.js web application
 │   ├── package.json
-│   ├── next.config.mjs       # Static export configuration
+│   ├── next.config.mjs       # Build config (validates NEXT_PUBLIC_API_URL)
 │   ├── tailwind.config.ts    # Custom theme configuration
 │   ├── app/                  # Next.js 14 App Router pages
 │   │   ├── layout.tsx        # Root layout with providers
@@ -409,8 +409,6 @@ media.yourdomain.com   → Media files (public_html/media/)
 │   ├── stores/               # Auth context provider
 │   ├── lib/                  # API client, utils, constants, theme
 │   └── types/                # TypeScript type definitions
-│
-├── frontend-build/           # Next.js static export output
 │
 └── mobile_app/               # Flutter cross-platform app
     ├── pubspec.yaml
@@ -748,14 +746,14 @@ flutter run
 
 ## 🚢 Production Deployment
 
-### cPanel Deployment
+### Shared hosting (cPanel)
 
-The platform is designed for cPanel shared hosting with Passenger WSGI.
+Historical cPanel/Passenger notes; the supported path is systemd + nginx (below).
 
 ```
-yourdomain.com         → public_html/ (frontend-build/)
-api.yourdomain.com     → Python app (backend/)
-media.yourdomain.com   → public_html/media/
+yourdomain.com         → Next.js SSR (`next start`, systemd eventflow-frontend.service)
+api.yourdomain.com     → Django DRF API (gunicorn, systemd eventflow.service)
+media.yourdomain.com   → Allowlisted media only (nginx location rules)
 ```
 
 ```bash
@@ -773,12 +771,25 @@ python manage.py seed_demo_data
 
 # 3. Frontend
 cd frontend
-npm install
+npm ci
+# NEXT_PUBLIC_API_URL must be set (frontend/.env.production) or the build fails
 npm run build
-# Upload out/ to public_html/
+# Served by `next start` (systemd unit eventflow-frontend.service),
+# proxied by nginx — there is no static `out/` upload step.
 
 # 4. Configure cron jobs (cPanel)
 # See cron-jobs.sh for all 5 scheduled tasks
+```
+
+### VPS (recommended)
+
+See `DEPLOYMENT.md` and `deploy/deploy_production.sh` for the supported
+systemd + nginx path (backend sync, `next build`/`next start`, media
+allowlist, health checks on `127.0.0.1:8000` / `127.0.0.1:3000`).
+
+```bash
+# From the repo root on the VPS (requires sudoers entries printed by the script)
+bash deploy/deploy_production.sh
 ```
 
 ### Docker (Future)

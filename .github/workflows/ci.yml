@@ -63,6 +63,13 @@ jobs:
 
       - name: Production build
         run: npm run build
+        env:
+          # next.config.mjs fails the build without NEXT_PUBLIC_API_URL.
+          # CI only needs a syntactically valid URL to exercise the build;
+          # the real value is set on the VPS at deploy time (never deployed
+          # from CI artifacts). Set the repo variable NEXT_PUBLIC_API_URL to
+          # point CI at a real/staging API if you want live previews.
+          NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL || 'https://api.ci-placeholder.example/api/v1' }}
 
   mobile:
     name: Mobile (Flutter)
