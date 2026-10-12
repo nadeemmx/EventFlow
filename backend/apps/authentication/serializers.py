@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from core.validators import validate_password_strength
+from core.validators import validate_password_strength, validate_mobile
 
 
 class RegisterSerializer(serializers.Serializer):
@@ -7,7 +7,9 @@ class RegisterSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True, min_length=8)
     confirm_password = serializers.CharField(write_only=True)
-    mobile = serializers.CharField(required=False, allow_blank=True, max_length=30)
+    mobile = serializers.CharField(
+        required=False, allow_blank=True, max_length=30,
+        validators=[validate_mobile])
     business_name = serializers.CharField(required=False, allow_blank=True, max_length=255)
 
     def validate(self, data):
@@ -58,6 +60,7 @@ class ProfileSerializer(serializers.Serializer):
     id = serializers.IntegerField(read_only=True)
     full_name = serializers.CharField()
     email = serializers.EmailField(read_only=True)
-    mobile = serializers.CharField(required=False)
+    mobile = serializers.CharField(
+        required=False, allow_blank=True, validators=[validate_mobile])
     role = serializers.CharField(read_only=True)
     tenant_id = serializers.IntegerField(read_only=True, allow_null=True)

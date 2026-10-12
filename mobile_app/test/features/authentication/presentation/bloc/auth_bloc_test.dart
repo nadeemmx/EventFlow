@@ -144,6 +144,10 @@ void main() {
           password: any(named: 'password'),
           confirmPassword: any(named: 'confirmPassword'),
           mobile: any(named: 'mobile'),
+          termsAccepted: any(named: 'termsAccepted'),
+          privacyAccepted: any(named: 'privacyAccepted'),
+          ageConfirmed: any(named: 'ageConfirmed'),
+          marketingOptIn: any(named: 'marketingOptIn'),
         )).thenAnswer(
           (_) async => LoginResponseModel(
             accessToken: 'access_token',
@@ -162,6 +166,9 @@ void main() {
         email: 'test@test.com',
         password: 'password123',
         confirmPassword: 'password123',
+        termsAccepted: true,
+        privacyAccepted: true,
+        ageConfirmed: true,
       )),
       expect: () => [
         AuthLoading(),
@@ -178,6 +185,10 @@ void main() {
           password: any(named: 'password'),
           confirmPassword: any(named: 'confirmPassword'),
           mobile: any(named: 'mobile'),
+          termsAccepted: any(named: 'termsAccepted'),
+          privacyAccepted: any(named: 'privacyAccepted'),
+          ageConfirmed: any(named: 'ageConfirmed'),
+          marketingOptIn: any(named: 'marketingOptIn'),
         )).thenThrow(Exception('Email already exists'));
         return AuthBloc(
           authRepository: mockAuthRepository,
@@ -189,6 +200,9 @@ void main() {
         email: 'existing@test.com',
         password: 'password123',
         confirmPassword: 'password123',
+        termsAccepted: true,
+        privacyAccepted: true,
+        ageConfirmed: true,
       )),
       expect: () => [
         AuthLoading(),

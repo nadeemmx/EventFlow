@@ -1,11 +1,15 @@
 [Unit]
 Description=EventFlow Django API
-Requires=network.target redis.service mysql.service
-After=network.target redis.service mysql.service
+# Wants= (not Requires=) so a missing unit name on a different distro
+# (redis.service vs redis-server.service, mysql.service vs mariadb.service)
+# degrades to a warning instead of blocking startup.
+Wants=redis-server.service mariadb.service
+After=network.target redis-server.service mariadb.service
 
 [Service]
-Type=notify
-NotifyAccess=all
+# gunicorn runs in the foreground and does not write to NOTIFY_SOCKET,
+# so Type=notify would hang until TimeoutStartSec and fail the unit.
+Type=simple
 User=eventflow
 Group=eventflow
 WorkingDirectory=/home/eventflow/python/eventflow-api

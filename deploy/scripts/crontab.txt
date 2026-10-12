@@ -1,6 +1,7 @@
 # EventFlow Cron Jobs
 # Install with: crontab -e -u eventflow
 # Then paste the contents below
+# eventflow-cron-v1  (marker: deploy_production.sh skips reinstall when present)
 
 # Environment
 SHELL=/bin/bash

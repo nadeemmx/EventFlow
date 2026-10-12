@@ -4,6 +4,8 @@ import { useState } from "react"
 import PageHero from "@/components/marketing/PageHero"
 import PageCTA from "@/components/marketing/PageCTA"
 import SectionHeader from "@/components/marketing/SectionHeader"
+import PrivacyConsent from "@/components/legal/PrivacyConsent"
+import { submitContactJson } from "@/lib/contact"
 
 const venueSizes = [
   "Single venue (under 5,000 sq ft)",
@@ -34,6 +36,47 @@ export default function DemoClient() {
     venueSize: "",
     message: "",
   })
+  const [timeSlot, setTimeSlot] = useState("")
+  const [ack, setAck] = useState(false)
+  const [ackError, setAckError] = useState<string | undefined>()
+  const [error, setError] = useState<string | null>(null)
+  const [reference, setReference] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    if (!ack) {
+      setAckError("Please confirm you have read the privacy notice.")
+      return
+    }
+    setAckError(undefined)
+    const details = [
+      form.message,
+      form.venueSize ? `Venue size: ${form.venueSize}` : "",
+      timeSlot ? `Preferred time slot: ${timeSlot}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n\n")
+    setSubmitting(true)
+    try {
+      const ref = await submitContactJson({
+        source: "demo",
+        name: form.name,
+        email: form.email,
+        phone: form.phone,
+        company: form.venueName,
+        subject: "Demo request",
+        message: details || "Please get in touch to schedule a demo.",
+        privacy_acknowledged: true,
+      })
+      setReference(ref)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "We could not submit your request.")
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value })
@@ -56,10 +99,24 @@ export default function DemoClient() {
                 highlight="Your Venue"
                 description="Fill in the details and we will tailor the demo to your needs."
               />
-              <form className="space-y-5 mt-8" onSubmit={(e) => e.preventDefault()}>
+              <form className="space-y-5 mt-8" onSubmit={handleSubmit} noValidate>
+                {reference ? (
+                  <div role="status" aria-live="polite" className="rounded-xl border border-slate-200 bg-white p-6 text-center">
+                    <h3 className="text-base font-semibold text-slate-900">Request received</h3>
+                    <p className="mt-2 text-sm text-slate-600">
+                      Thanks — your reference is <strong className="font-mono">{reference}</strong>.
+                      We will email you to confirm a time slot.
+                    </p>
+                  </div>
+                ) : null}
+                {error && (
+                  <div role="alert" className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                    {error}
+                  </div>
+                )}
                 <div>
                   <label htmlFor="name" className="block text-sm font-medium text-slate-900 mb-1">
-                    Full Name <span className="text-red-500">*</span>
+                    Full Name <span className="text-red-500" aria-hidden="true">*</span>
                   </label>
                   <input
                     id="name"
@@ -74,7 +131,7 @@ export default function DemoClient() {
                 </div>
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-slate-900 mb-1">
-                    Work Email <span className="text-red-500">*</span>
+                    Work Email <span className="text-red-500" aria-hidden="true">*</span>
                   </label>
                   <input
                     id="email"
@@ -89,7 +146,7 @@ export default function DemoClient() {
                 </div>
                 <div>
                   <label htmlFor="phone" className="block text-sm font-medium text-slate-900 mb-1">
-                    Phone Number <span className="text-red-500">*</span>
+                    Phone Number <span className="text-red-500" aria-hidden="true">*</span>
                   </label>
                   <input
                     id="phone"
@@ -147,11 +204,22 @@ export default function DemoClient() {
                     placeholder="We are particularly interested in..."
                   />
                 </div>
+                <PrivacyConsent
+                  idPrefix="demo"
+                  ackChecked={ack}
+                  onAckChange={(checked) => {
+                    setAck(checked)
+                    if (checked) setAckError(undefined)
+                  }}
+                  ackError={ackError}
+                  compact
+                />
                 <button
                   type="submit"
-                  className="inline-flex w-full items-center justify-center rounded-xl bg-amber-500 px-6 py-3.5 text-sm font-semibold text-slate-900 hover:bg-amber-600 transition-all hover:shadow-lg hover:shadow-amber-500/30"
+                  disabled={submitting}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-6 py-3.5 text-sm font-semibold text-slate-900 hover:bg-amber-600 transition-all hover:shadow-lg hover:shadow-amber-500/30 disabled:opacity-60"
                 >
-                  Book My Demo
+                  {submitting ? "Submitting…" : "Book My Demo"}
                 </button>
               </form>
             </div>
@@ -163,50 +231,42 @@ export default function DemoClient() {
                   highlight="Time Slot"
                   description="Choose a time that works for you. All demos are 30 minutes."
                 />
-                <div className="grid grid-cols-2 gap-2 mt-8">
-                  {timeSlots.map((slot) => (
-                    <label
-                      key={slot}
-                      className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-700 transition-all has-[:checked]:border-amber-500 has-[:checked]:bg-amber-50 has-[:checked]:text-amber-800"
-                    >
-                      <input type="radio" name="timeSlot" value={slot} className="accent-amber-500" />
-                      {slot}
-                    </label>
-                  ))}
-                </div>
+                <fieldset className="mt-8">
+                  <legend className="sr-only">Preferred demo time</legend>
+                  <div className="grid grid-cols-2 gap-2">
+                    {timeSlots.map((slot) => (
+                      <label
+                        key={slot}
+                        className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-700 transition-all has-[:checked]:border-amber-500 has-[:checked]:bg-amber-50 has-[:checked]:text-amber-800"
+                      >
+                        <input
+                          type="radio"
+                          name="timeSlot"
+                          value={slot}
+                          checked={timeSlot === slot}
+                          onChange={() => setTimeSlot(slot)}
+                          className="accent-amber-500"
+                        />
+                        {slot}
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
                 <p className="text-xs text-slate-500 mt-3">
                   All times are in Indian Standard Time (UTC +5:30). Need a different time? Leave a note in the message field.
                 </p>
               </div>
 
               <div className="rounded-2xl border border-slate-200 bg-white p-6">
-                <h3 className="text-base font-semibold text-slate-900 mb-3">Availability Preview</h3>
-                <div className="rounded-lg border border-slate-100 bg-slate-50 p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-medium text-slate-600">Today</span>
-                    <span className="text-xs font-medium text-slate-600">
-                      <svg className="inline h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-                      </svg>
-                      5 slots remaining
-                    </span>
-                  </div>
-                  <div className="space-y-1.5">
-                    <div className="h-2.5 rounded-full bg-amber-500 w-full" />
-                    <div className="h-2.5 rounded-full bg-amber-500 w-3/4" />
-                    <div className="h-2.5 rounded-full bg-amber-500 w-5/6" />
-                    <div className="h-2.5 rounded-full bg-slate-200 w-2/3" />
-                    <div className="h-2.5 rounded-full bg-slate-200 w-1/2" />
-                  </div>
-                  <div className="flex justify-between mt-2 text-[10px] text-slate-400">
-                    <span>9 AM</span>
-                    <span>12 PM</span>
-                    <span>3 PM</span>
-                    <span>6 PM</span>
-                  </div>
-                </div>
+                <h3 className="text-base font-semibold text-slate-900 mb-3">How it works</h3>
+                <ol className="list-decimal space-y-2 pl-5 text-sm text-slate-600">
+                  <li>You send the form with a preferred time slot.</li>
+                  <li>We confirm the slot by email (slots are subject to availability).</li>
+                  <li>We run a 30-minute walkthrough tailored to your venue.</li>
+                </ol>
                 <p className="text-xs text-slate-500 mt-3">
-                  Our team runs demos Monday to Friday. Most slots go quickly — book early for the best availability.
+                  Demo slots are handled by our team, Monday to Friday. Pick a time above or leave
+                  a note in the message field.
                 </p>
               </div>
             </div>
@@ -229,23 +289,23 @@ export default function DemoClient() {
               },
               {
                 title: "Calendar View",
-                desc: "Drag-and-drop events across your venue spaces. Colour-coded by event type — weddings, corporate, social — so you never double-book.",
+                desc: "See your bookings on a calendar, colour-coded by event type — weddings, corporate, social — so gaps are easy to spot.",
               },
               {
                 title: "Lead Pipeline",
-                desc: "Track every enquiry from first call to signed contract. Stage-based kanban view with deal value and probability.",
+                desc: "Track every enquiry from first contact to signed contract, with notes and follow-ups attached to each lead.",
               },
               {
                 title: "Payment Reconciliation",
-                desc: "Match payments to invoices automatically. See outstanding balances and send payment reminders in bulk.",
+                desc: "Match payments to invoices and see outstanding balances, and send payment reminders to customers.",
               },
               {
                 title: "Analytics Dashboard",
-                desc: "Real-time KPIs for revenue, occupancy, lead conversion, and average event spend. Export reports with one click.",
+                desc: "Reports for revenue, occupancy, and lead conversion, with CSV export.",
               },
               {
                 title: "Staff & Vendor Hub",
-                desc: "Assign teams, track vendor contracts, and manage schedules from a single pane. Every event has a clear resource map.",
+                desc: "Assign team tasks and track vendor contracts from a single place.",
               },
             ].map((item) => (
               <div
@@ -253,7 +313,7 @@ export default function DemoClient() {
                 className="rounded-xl border border-slate-200 bg-white p-6 transition-all hover:-translate-y-1 hover:shadow-lg hover:shadow-amber-500/10"
               >
                 <div className="mb-3 h-36 rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center border border-slate-200">
-                  <span className="text-xs text-slate-400 font-medium uppercase tracking-wider">{item.title}</span>
+                  <span className="text-xs text-slate-500 font-medium uppercase tracking-wider">{item.title}</span>
                 </div>
                 <h3 className="text-base font-semibold text-slate-900">{item.title}</h3>
                 <p className="mt-1 text-sm text-slate-600 leading-relaxed">{item.desc}</p>
@@ -268,7 +328,7 @@ export default function DemoClient() {
         highlight="Book Your Demo"
         description="No slides, no scripts. Just a live walkthrough of EventFlow configured for your venue."
         buttonText="Book a Demo"
-        buttonHref="#top"
+        buttonHref="/contact/"
       />
     </>
   )

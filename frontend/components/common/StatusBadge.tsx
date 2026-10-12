@@ -11,7 +11,8 @@ export function StatusBadge({
   status,
   type = "generic",
 }: StatusBadgeProps) {
-  const colorClass = STATUS_COLORS[status] || "bg-slate-200 text-slate-900"
+  const value = status ?? ""
+  const colorClass = STATUS_COLORS[value] || "bg-slate-200 text-slate-900"
 
   return (
     <Badge
@@ -21,7 +22,7 @@ export function StatusBadge({
         colorClass
       )}
     >
-      {status.replace(/_/g, " ")}
+      {value.replace(/_/g, " ") || "—"}
     </Badge>
   )
 }

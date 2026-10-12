@@ -76,13 +76,13 @@ const followupSchema = z.object({
 type FollowupForm = z.infer<typeof followupSchema>
 
 const LEAD_SOURCES = [
-  "REFERRAL",
   "WEBSITE",
-  "SOCIAL_MEDIA",
+  "GOOGLE",
+  "FACEBOOK",
+  "INSTAGRAM",
+  "WHATSAPP",
   "WALK_IN",
-  "PHONE_INQUIRY",
-  "EVENT",
-  "OTHER",
+  "REFERRAL",
 ] as const
 
 export default function LeadDetailClient() {
@@ -294,7 +294,12 @@ export default function LeadDetailClient() {
                       setEditValue("lead_source", v, { shouldValidate: true })
                     }
                   >
-                    <SelectTrigger id="lead_source" className="cursor-pointer">
+                    <SelectTrigger
+                      id="lead_source"
+                      aria-invalid={editErrors.lead_source ? true : undefined}
+                      aria-describedby={editErrors.lead_source ? "lead_source-edit-error" : undefined}
+                      className="cursor-pointer"
+                    >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -306,7 +311,9 @@ export default function LeadDetailClient() {
                     </SelectContent>
                   </Select>
                   {editErrors.lead_source && (
-                    <p className="text-sm text-destructive">{editErrors.lead_source.message}</p>
+                    <p id="lead_source-edit-error" role="alert" className="text-sm text-destructive">
+                      {editErrors.lead_source.message}
+                    </p>
                   )}
                 </div>
                 <div className="space-y-2">
@@ -317,7 +324,12 @@ export default function LeadDetailClient() {
                       setEditValue("event_type", v, { shouldValidate: true })
                     }
                   >
-                    <SelectTrigger id="event_type" className="cursor-pointer">
+                    <SelectTrigger
+                      id="event_type"
+                      aria-invalid={editErrors.event_type ? true : undefined}
+                      aria-describedby={editErrors.event_type ? "event_type-edit-error" : undefined}
+                      className="cursor-pointer"
+                    >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -329,7 +341,9 @@ export default function LeadDetailClient() {
                     </SelectContent>
                   </Select>
                   {editErrors.event_type && (
-                    <p className="text-sm text-destructive">{editErrors.event_type.message}</p>
+                    <p id="event_type-edit-error" role="alert" className="text-sm text-destructive">
+                      {editErrors.event_type.message}
+                    </p>
                   )}
                 </div>
                 <div className="space-y-2">
@@ -340,7 +354,12 @@ export default function LeadDetailClient() {
                       setEditValue("lead_status", v, { shouldValidate: true })
                     }
                   >
-                    <SelectTrigger id="lead_status" className="cursor-pointer">
+                    <SelectTrigger
+                      id="lead_status"
+                      aria-invalid={editErrors.lead_status ? true : undefined}
+                      aria-describedby={editErrors.lead_status ? "lead_status-edit-error" : undefined}
+                      className="cursor-pointer"
+                    >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -352,7 +371,9 @@ export default function LeadDetailClient() {
                     </SelectContent>
                   </Select>
                   {editErrors.lead_status && (
-                    <p className="text-sm text-destructive">{editErrors.lead_status.message}</p>
+                    <p id="lead_status-edit-error" role="alert" className="text-sm text-destructive">
+                      {editErrors.lead_status.message}
+                    </p>
                   )}
                 </div>
               </div>

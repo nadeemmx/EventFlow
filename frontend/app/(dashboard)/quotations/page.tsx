@@ -154,18 +154,20 @@ export default function QuotationsPage() {
           <Button
             variant="ghost"
             size="icon"
+            aria-label="View quotation"
             className="h-8 w-8 cursor-pointer"
             onClick={(e) => {
               e.stopPropagation()
               router.push(`/quotations/${item.id as number}`)
             }}
           >
-            <Eye className="h-4 w-4" />
+            <Eye aria-hidden="true" focusable="false" className="h-4 w-4" />
           </Button>
           {canSend(item.status as string) && (
             <Button
               variant="ghost"
               size="icon"
+              aria-label="Send quotation"
               className="h-8 w-8 text-blue-600 hover:text-blue-600 cursor-pointer"
               onClick={(e) => {
                 e.stopPropagation()
@@ -173,13 +175,14 @@ export default function QuotationsPage() {
               }}
               title="Send Quotation"
             >
-              <Send className="h-4 w-4" />
+              <Send aria-hidden="true" focusable="false" className="h-4 w-4" />
             </Button>
           )}
           {canAccept(item.status as string) && (
             <Button
               variant="ghost"
               size="icon"
+              aria-label="Accept quotation"
               className="h-8 w-8 text-success hover:text-success cursor-pointer"
               onClick={(e) => {
                 e.stopPropagation()
@@ -187,13 +190,14 @@ export default function QuotationsPage() {
               }}
               title="Accept Quotation"
             >
-              <CheckCircle className="h-4 w-4" />
+              <CheckCircle aria-hidden="true" focusable="false" className="h-4 w-4" />
             </Button>
           )}
           {canReject(item.status as string) && (
             <Button
               variant="ghost"
               size="icon"
+              aria-label="Reject quotation"
               className="h-8 w-8 text-destructive hover:text-destructive cursor-pointer"
               onClick={(e) => {
                 e.stopPropagation()
@@ -201,7 +205,7 @@ export default function QuotationsPage() {
               }}
               title="Reject Quotation"
             >
-              <XCircle className="h-4 w-4" />
+              <XCircle aria-hidden="true" focusable="false" className="h-4 w-4" />
             </Button>
           )}
         </div>

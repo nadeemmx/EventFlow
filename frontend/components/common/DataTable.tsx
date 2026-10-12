@@ -16,7 +16,6 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { EmptyState } from "@/components/common/EmptyState"
 import { ErrorState } from "@/components/common/ErrorState"
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface Column<T = any> {
   key: string
   header: string
@@ -24,7 +23,6 @@ export interface Column<T = any> {
   sortable?: boolean
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 interface DataTableProps<T = any> {
   columns: Column<T>[]
   data: T[]
@@ -39,7 +37,6 @@ interface DataTableProps<T = any> {
   onRetry?: () => void
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function DataTable<T = any>({
   columns,
   data,
@@ -52,14 +49,22 @@ export function DataTable<T = any>({
 }: DataTableProps<T>) {
   const [sortKey, setSortKey] = useState<string | null>(null)
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
+  const [sortAnnouncement, setSortAnnouncement] = useState("")
 
   const handleSort = (key: string) => {
+    const header = columns.find((col) => col.key === key)?.header ?? key
+    let next: "asc" | "desc"
     if (sortKey === key) {
-      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"))
+      next = sortDirection === "asc" ? "desc" : "asc"
+      setSortDirection(next)
     } else {
       setSortKey(key)
       setSortDirection("asc")
+      next = "asc"
     }
+    setSortAnnouncement(
+      `Sorted by ${header}, ${next === "asc" ? "ascending" : "descending"}`,
+    )
   }
 
   const sortedData = [...data].sort((a, b) => {
@@ -123,31 +128,47 @@ export function DataTable<T = any>({
 
   return (
     <div className="rounded-md border border-amber-500/20 overflow-x-auto">
+      <div aria-live="polite" className="sr-only">
+        {sortAnnouncement}
+      </div>
       <Table>
         <TableHeader>
           <TableRow>
             {columns.map((col) => (
               <TableHead
                 key={col.key}
-                className={cn(col.sortable && "cursor-pointer select-none")}
-                onClick={() => col.sortable && handleSort(col.key)}
+                aria-sort={
+                  col.sortable
+                    ? sortKey === col.key
+                      ? sortDirection === "asc"
+                        ? "ascending"
+                        : "descending"
+                      : "none"
+                    : undefined
+                }
               >
-                <div className="flex items-center gap-1">
-                  {col.header}
-                  {col.sortable && (
+                {col.sortable ? (
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    onClick={() => handleSort(col.key)}
+                  >
+                    {col.header}
                     <span className="text-slate-600">
                       {sortKey === col.key ? (
                         sortDirection === "asc" ? (
-                          <ChevronUp className="h-3.5 w-3.5" />
+                          <ChevronUp aria-hidden="true" focusable="false" className="h-3.5 w-3.5" />
                         ) : (
-                          <ChevronDown className="h-3.5 w-3.5" />
+                          <ChevronDown aria-hidden="true" focusable="false" className="h-3.5 w-3.5" />
                         )
                       ) : (
-                        <ChevronsUpDown className="h-3.5 w-3.5" />
+                        <ChevronsUpDown aria-hidden="true" focusable="false" className="h-3.5 w-3.5" />
                       )}
                     </span>
-                  )}
-                </div>
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-1">{col.header}</div>
+                )}
               </TableHead>
             ))}
           </TableRow>
@@ -157,7 +178,16 @@ export function DataTable<T = any>({
             <TableRow
               key={String((item as Record<string, unknown>).id ?? index)}
               className={cn(onRowClick && "cursor-pointer")}
+              role={onRowClick ? "link" : undefined}
+              tabIndex={onRowClick ? 0 : undefined}
               onClick={() => onRowClick?.(item)}
+              onKeyDown={(e) => {
+                if (!onRowClick || e.target !== e.currentTarget) return
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault()
+                  onRowClick(item)
+                }
+              }}
             >
               {columns.map((col) => (
                 <TableCell key={col.key}>

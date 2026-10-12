@@ -98,16 +98,19 @@ export default function NewInvoicePage() {
                         <Button
                           variant="outline"
                           role="combobox"
+                          aria-expanded={bookingOpen}
+                          aria-controls="invoice-booking-listbox"
+                          aria-autocomplete="list"
                           className={cn("w-full justify-between cursor-pointer", !field.value && "text-muted-foreground")}
                         >
                           {field.value && selectedBooking
                             ? selectedBooking.booking_number
                             : "Search booking..."}
-                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          <ChevronsUpDown aria-hidden="true" focusable="false" className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
-                    <PopoverContent className="w-full p-0">
+                    <PopoverContent id="invoice-booking-listbox" className="w-full p-0">
                       <Command>
                         <CommandInput
                           placeholder="Search by booking number..."
@@ -128,6 +131,8 @@ export default function NewInvoicePage() {
                                 className="cursor-pointer"
                               >
                                 <Check
+                                  aria-hidden="true"
+                                  focusable="false"
                                   className={cn(
                                     "mr-2 h-4 w-4",
                                     booking.id === field.value ? "opacity-100" : "opacity-0"

@@ -3,6 +3,7 @@ from repositories.inventory_repository import InventoryRepository, InventoryAllo
 from repositories.audit_repository import AuditRepository
 from services.base import BaseService
 from core.exceptions import ValidationException
+from apps.bookings.models import Booking
 
 
 class InventoryService(BaseService):
@@ -17,6 +18,11 @@ class InventoryService(BaseService):
 
     @transaction.atomic
     def allocate(self, booking_id, inventory_item_id, quantity):
+        bookings = Booking.objects.all()
+        if self.tenant:
+            bookings = bookings.filter(tenant=self.tenant)
+        if not bookings.filter(id=booking_id).exists():
+            raise ValidationException("Booking not found")
         item = self.repo.get_for_update(inventory_item_id)
         if quantity > item.available_quantity:
             raise ValidationException("Insufficient available quantity")

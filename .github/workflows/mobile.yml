@@ -1,0 +1,162 @@
+name: Mobile APK
+
+# Manually triggered and completely separate from web CI/CD: a failed or
+# missing mobile build never blocks the production deployment.
+on:
+  workflow_dispatch:
+    inputs:
+      api_base_url:
+        description: "API base URL compiled into the app (absolute http(s) URL, must end with /)"
+        required: true
+        default: "http://194.77.89.95/api/v1/"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-apk
+  cancel-in-progress: true
+
+jobs:
+  android:
+    name: Android release APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: mobile_app
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.2"
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Validate API base URL input
+        env:
+          API_BASE_URL: ${{ inputs.api_base_url }}
+        run: |
+          set -euo pipefail
+          if ! printf '%s' "${API_BASE_URL}" | grep -Eq '^https?://[A-Za-z0-9.:-]+(/[A-Za-z0-9._~%+-]*)*/$'; then
+            echo "::error::api_base_url must be an absolute http(s) URL ending in / (got: ${API_BASE_URL})"
+            exit 1
+          fi
+          if printf '%s' "${API_BASE_URL}" | grep -Eq '[[:space:]"'"'"']'; then
+            echo "::error::api_base_url must not contain whitespace or quotes"
+            exit 1
+          fi
+          echo "Building with API_BASE_URL=${API_BASE_URL}"
+
+      - name: Accept Android SDK licenses
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+          if [ -z "${SDK_ROOT}" ] || [ ! -d "${SDK_ROOT}" ]; then
+            echo "::error::Android SDK not found on the runner (ANDROID_HOME/ANDROID_SDK_ROOT)"
+            exit 1
+          fi
+          SDKMANAGER=$(find "${SDK_ROOT}/cmdline-tools" -maxdepth 3 -type f -name sdkmanager 2>/dev/null | head -1 || true)
+          if [ -z "${SDKMANAGER}" ]; then
+            echo "::error::sdkmanager not found under ${SDK_ROOT}/cmdline-tools"
+            exit 1
+          fi
+          yes | "${SDKMANAGER}" --licenses >/dev/null 2>&1 || true
+          echo "Android SDK licenses accepted"
+
+      # Release builds are signed with a keystore provided as a secret when
+      # one exists; otherwise an ephemeral throwaway keystore is generated on
+      # the runner so the workflow works out of the box for internal test
+      # artifacts. The keystore and its passwords are NEVER uploaded — the
+      # artifact contains only the APK.
+      - name: Prepare signing keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEYSTORE_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          KEYSTORE_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -n "${KEYSTORE_BASE64}" ]; then
+            printf '%s' "${KEYSTORE_BASE64}" | base64 -d > "${RUNNER_TEMP}/release.jks"
+            {
+              echo "KEYSTORE_PATH=${RUNNER_TEMP}/release.jks"
+              echo "KEY_ALIAS=${KEYSTORE_ALIAS}"
+              echo "KEY_PASSWORD=${KEYSTORE_KEY_PASSWORD}"
+              echo "KEYSTORE_PASSWORD=${KEYSTORE_STORE_PASSWORD}"
+            } >> "${GITHUB_ENV}"
+            echo "Using keystore from repository secrets"
+          else
+            echo "::notice::No ANDROID_KEYSTORE_BASE64 secret — signing with an ephemeral CI keystore (internal test artifact only)."
+            keytool -genkeypair -keystore "${RUNNER_TEMP}/ci-ephemeral.jks" \
+              -alias ci -keyalg RSA -keysize 2048 -validity 1 \
+              -storepass ci-store-pass -keypass ci-store-pass \
+              -dname "CN=EventFlow CI ephemeral build, O=EventFlow, C=US"
+            {
+              echo "KEYSTORE_PATH=${RUNNER_TEMP}/ci-ephemeral.jks"
+              echo "KEY_ALIAS=ci"
+              echo "KEY_PASSWORD=ci-store-pass"
+              echo "KEYSTORE_PASSWORD=ci-store-pass"
+            } >> "${GITHUB_ENV}"
+          fi
+
+      - name: Build release APK
+        env:
+          API_BASE_URL: ${{ inputs.api_base_url }}
+        run: flutter build apk --release --dart-define=API_BASE_URL="${API_BASE_URL}"
+
+      - name: Verify APK artifact
+        run: |
+          set -euo pipefail
+          APK="build/app/outputs/flutter-apk/app-release.apk"
+          if [ ! -f "${APK}" ]; then
+            echo "::error::release APK not produced at ${APK}"
+            exit 1
+          fi
+          SIZE=$(stat -c%s "${APK}")
+          if [ "${SIZE}" -lt 1000000 ]; then
+            echo "::error::APK is suspiciously small (${SIZE} bytes)"
+            exit 1
+          fi
+          unzip -tq "${APK}" >/dev/null || { echo "::error::APK failed zip integrity check"; exit 1; }
+          echo "OK: ${APK} (${SIZE} bytes)"
+
+      - name: Verify API URL was compiled into the app
+        env:
+          API_BASE_URL: ${{ inputs.api_base_url }}
+        run: |
+          set -euo pipefail
+          APK="build/app/outputs/flutter-apk/app-release.apk"
+          # --dart-define constants are compiled into the Dart AOT snapshot
+          # (lib/*/libapp.so inside the APK) — verify the value really landed.
+          if ! unzip -p "${APK}" 'lib/*/libapp.so' | grep -aqF "${API_BASE_URL}"; then
+            echo "::error::API_BASE_URL (${API_BASE_URL}) not found in libapp.so — the --dart-define did not reach the binary"
+            exit 1
+          fi
+          echo "OK: ${API_BASE_URL} is compiled into the app"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: eventflow-android-release-${{ github.run_number }}
+          path: mobile_app/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 14

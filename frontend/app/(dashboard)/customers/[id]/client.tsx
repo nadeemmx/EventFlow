@@ -199,38 +199,76 @@ export default function CustomerDetailClient() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="full_name">Full Name</Label>
-                  <Input id="full_name" {...register("full_name")} />
+                  <Input
+                    id="full_name"
+                    aria-invalid={errors.full_name ? true : undefined}
+                    aria-describedby={errors.full_name ? "full_name-error" : undefined}
+                    {...register("full_name")}
+                  />
                   {errors.full_name && (
-                    <p className="text-sm text-destructive">{errors.full_name.message}</p>
+                    <p id="full_name-error" role="alert" className="text-sm text-destructive">
+                      {errors.full_name.message}
+                    </p>
                   )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="mobile">Mobile</Label>
-                  <Input id="mobile" {...register("mobile")} />
+                  <Input
+                    id="mobile"
+                    aria-invalid={errors.mobile ? true : undefined}
+                    aria-describedby={errors.mobile ? "mobile-error" : undefined}
+                    {...register("mobile")}
+                  />
                   {errors.mobile && (
-                    <p className="text-sm text-destructive">{errors.mobile.message}</p>
+                    <p id="mobile-error" role="alert" className="text-sm text-destructive">
+                      {errors.mobile.message}
+                    </p>
                   )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" {...register("email")} />
+                  <Input
+                    id="email"
+                    type="email"
+                    aria-invalid={errors.email ? true : undefined}
+                    aria-describedby={errors.email ? "email-error" : undefined}
+                    {...register("email")}
+                  />
                   {errors.email && (
-                    <p className="text-sm text-destructive">{errors.email.message}</p>
+                    <p id="email-error" role="alert" className="text-sm text-destructive">
+                      {errors.email.message}
+                    </p>
                   )}
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="address">Address</Label>
-                <Textarea id="address" rows={3} {...register("address")} />
+                <Textarea
+                  id="address"
+                  rows={3}
+                  aria-invalid={errors.address ? true : undefined}
+                  aria-describedby={errors.address ? "address-error" : undefined}
+                  {...register("address")}
+                />
                 {errors.address && (
-                  <p className="text-sm text-destructive">{errors.address.message}</p>
+                  <p id="address-error" role="alert" className="text-sm text-destructive">
+                    {errors.address.message}
+                  </p>
                 )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="remarks">Remarks</Label>
-                <Textarea id="remarks" rows={3} {...register("remarks")} />
+                <Textarea
+                  id="remarks"
+                  rows={3}
+                  aria-invalid={errors.remarks ? true : undefined}
+                  aria-describedby={errors.remarks ? "remarks-error" : undefined}
+                  {...register("remarks")}
+                />
                 {errors.remarks && (
-                  <p className="text-sm text-destructive">{errors.remarks.message}</p>
+                  <p id="remarks-error" role="alert" className="text-sm text-destructive">
+                    {errors.remarks.message}
+                  </p>
                 )}
               </div>
             </form>

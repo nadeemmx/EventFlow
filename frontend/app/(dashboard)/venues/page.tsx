@@ -120,35 +120,38 @@ export default function VenuesPage() {
             <Button
               variant="ghost"
               size="icon"
+              aria-label="View venue"
               className="cursor-pointer"
               onClick={(e) => {
                 e.stopPropagation()
                 router.push(`/venues/${venue.id}`)
               }}
             >
-              <Eye className="h-4 w-4" />
+              <Eye aria-hidden="true" focusable="false" className="h-4 w-4" />
             </Button>
             <Button
               variant="ghost"
               size="icon"
+              aria-label="Edit venue"
               className="cursor-pointer"
               onClick={(e) => {
                 e.stopPropagation()
                 router.push(`/venues/${venue.id}`)
               }}
             >
-              <Edit className="h-4 w-4" />
+              <Edit aria-hidden="true" focusable="false" className="h-4 w-4" />
             </Button>
             <Button
               variant="ghost"
               size="icon"
+              aria-label="Delete venue"
               className="cursor-pointer text-destructive hover:text-destructive"
               onClick={(e) => {
                 e.stopPropagation()
                 setDeleteId(venue.id)
               }}
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 aria-hidden="true" focusable="false" className="h-4 w-4" />
             </Button>
           </div>
         )

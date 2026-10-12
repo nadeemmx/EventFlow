@@ -13,6 +13,18 @@ class VenueSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "created_at", "updated_at"]
 
 
+class PlatformAdminVenueSerializer(VenueSerializer):
+    tenant = serializers.SerializerMethodField()
+
+    class Meta(VenueSerializer.Meta):
+        fields = VenueSerializer.Meta.fields + ["tenant"]
+
+    def get_tenant(self, obj):
+        if not obj.tenant_id:
+            return None
+        return {"id": obj.tenant_id, "business_name": obj.tenant.business_name}
+
+
 class VenueImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = VenueImage

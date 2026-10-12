@@ -118,8 +118,16 @@ export async function updateProfile(profile: Partial<UserProfile>): Promise<ApiR
   return data
 }
 
-export async function getUsers(): Promise<ApiResponse<SettingsUser[]>> {
-  const { data } = await apiClient.get(`${BASE}/users/`)
+export interface PaginatedUsersResponse {
+  results: SettingsUser[]
+  page: number
+  page_size: number
+  total_records: number
+  total_pages: number
+}
+
+export async function getUsers(params?: { page?: number; page_size?: number }): Promise<ApiResponse<PaginatedUsersResponse>> {
+  const { data } = await apiClient.get(`${BASE}/users/`, { params })
   return data
 }
 

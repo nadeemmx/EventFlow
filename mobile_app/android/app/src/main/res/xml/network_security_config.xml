@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Default: HTTPS only (targetSdk 36 → cleartext blocked by default). -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- TEMPORARY: HTTP testing against the bare VPS IP while no domain/TLS
+         certificate exists (Android blocks cleartext for non-loopback IPs).
+         Scoped to this single IP — every other host still requires TLS.
+         DELETE this domain-config once HTTPS + a real domain are in place. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">194.77.89.95</domain>
+    </domain-config>
+</network-security-config>

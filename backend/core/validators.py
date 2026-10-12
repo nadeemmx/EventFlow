@@ -4,7 +4,14 @@ from django.core.exceptions import ValidationError
 
 
 def validate_mobile(value):
-    if not re.match(r"^\+?[1-9]\d{9,14}$", value):
+    # Mirrors the frontend zod rule (frontend/app/(dashboard)/customers/new/
+    # page.tsx:24). The UI submits the number as typed — spaces, dashes and
+    # parentheses included, with no normalisation — so the backend must accept
+    # at least everything the UI accepts, or users get a 400 for input their
+    # own form called valid. This validator existed but was wired to nothing,
+    # which is how "mobile": "not-a-number-mgr" reached the database
+    # (QA-TEST-REPORT-ROLES.md F-5).
+    if not re.match(r"^[0-9+\-\s()]{7,15}$", value):
         raise ValidationError("Enter a valid mobile number.")
 
 

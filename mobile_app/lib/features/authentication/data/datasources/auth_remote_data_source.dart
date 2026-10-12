@@ -30,6 +30,10 @@ class AuthRemoteDataSource {
     required String email,
     required String password,
     required String confirmPassword,
+    required bool termsAccepted,
+    required bool privacyAccepted,
+    required bool ageConfirmed,
+    bool marketingOptIn = false,
     String? mobile,
   }) async {
     final data = <String, dynamic>{
@@ -37,6 +41,10 @@ class AuthRemoteDataSource {
       'email': email,
       'password': password,
       'confirm_password': confirmPassword,
+      'terms_accepted': termsAccepted,
+      'privacy_accepted': privacyAccepted,
+      'age_confirmed': ageConfirmed,
+      'marketing_opt_in': marketingOptIn,
     };
     if (mobile != null && mobile.isNotEmpty) {
       data['mobile'] = mobile;
@@ -53,6 +61,18 @@ class AuthRemoteDataSource {
       throw Exception(apiResponse.message);
     }
     return apiResponse.data!;
+  }
+
+  /// Revokes the session server-side (`POST auth/logout/`).
+  ///
+  /// The backend `LogoutView` requires an authenticated request plus a
+  /// `refresh_token` body field (see `RefreshSerializer`); the access token is
+  /// attached by the ApiClient auth interceptor.
+  Future<void> logout(String refreshToken) async {
+    await _apiClient.post(
+      ApiEndpoints.logout,
+      data: {'refresh_token': refreshToken},
+    );
   }
 
   Future<ApiResponse<void>> forgotPassword(String email) async {

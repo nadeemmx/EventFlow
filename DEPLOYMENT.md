@@ -3,9 +3,9 @@
 ## Architecture
 
 ```
-yourdomain.com          → Next.js static export (public_html/)
-api.yourdomain.com      → Django DRF API (Passenger WSGI)
-media.yourdomain.com    → Media files (public_html/media/)
+yourdomain.com          → Next.js SSR (`next start` on 127.0.0.1:3000, nginx → frontend upstream)
+api.yourdomain.com      → Django DRF API (gunicorn on 127.0.0.1:8000, nginx → backend upstream)
+media.yourdomain.com    → Allowlisted media only (tenants/logos, tenants/settings, venues, invoices/logos, branding); everything else → 404
 ```
 
 ## Prerequisites
@@ -74,30 +74,43 @@ python manage.py seed_demo_data --settings=config.settings.production
 
 ## Step 3: Frontend Deployment
 
-### 3.1 Build Static Export
+The frontend is an SSR app — there is no static `out/` directory and no
+`public_html` upload. It is built and served in place:
 
-On your local machine:
+### 3.1 Build
+
 ```bash
 cd frontend
-npm install
-npm run build
+npm ci
+npm run build    # requires NEXT_PUBLIC_API_URL (frontend/.env.production)
+npm start        # next start → 127.0.0.1:3000
 ```
 
-This generates the `out/` directory with static files.
+### 3.2 Serve (VPS / systemd)
 
-### 3.2 Upload to cPanel
+`deploy/deploy_production.sh` performs the build and installs
+`eventflow-frontend.service` (systemd, `next start`, `PORT=3000`); nginx
+proxies `yourdomain.com` → `eventflow_frontend` upstream. Health checks
+target `http://127.0.0.1:3000/` and `http://127.0.0.1:8000/live/` directly.
 
-1. Upload all files from `out/` to `public_html/`
-2. Upload `.htaccess` from the project root to `public_html/`
+Templates: `deploy/nginx/eventflow.conf` (domains via
+`deploy/scripts/render_nginx_config.sh`), `deploy/nginx/eventflow-ip.conf`
+(IP-only servers). See `deploy/deploy.sh` for first-time bootstrap.
 
 ## Step 4: Media Files
 
-1. Create directory: `public_html/media/`
-2. Create subdirectories: `venues/`, `customers/`, `invoices/`, `receipts/`, `pdf/`, `profiles/`
-3. Add `.htaccess` with:
-```
-Options -Indexes
-```
+On the VPS the media root is `/home/eventflow/media/` (outside the repo).
+nginx serves only the allowlisted prefixes — `tenants/logos/`,
+`tenants/settings/`, `venues/`, `invoices/logos/`, `branding/` — and
+returns 404 for everything else (`contracts/pdf/`, `invoices/pdf/`,
+`contact/resumes/` are served through authenticated Django endpoints, not
+the static server). Directory indexing is off in
+`deploy/nginx/eventflow.conf`.
+
+Legacy cPanel layout (not the recommended path): create
+`public_html/media/` with `venues/`, `customers/`, `invoices/`,
+`receipts/`, `pdf/`, `profiles/` and an `.htaccess` containing
+`Options -Indexes`.
 
 ## Step 5: Cron Jobs
 
@@ -128,7 +141,8 @@ In cPanel → "Cron Jobs", add:
 
 ### 500 Internal Server Error
 - Check `logs/django.log` in the backend directory
-- Verify Passenger WSGI configuration in cPanel
+- VPS: `journalctl -u eventflow.service -u eventflow-frontend.service -n 100`
+- cPanel: verify Passenger WSGI configuration in cPanel
 - Ensure all environment variables are set
 
 ### Media Files Not Loading

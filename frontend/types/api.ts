@@ -14,6 +14,13 @@ export interface PaginatedResponse<T> extends ApiResponse<T[]> {
   };
 }
 
+export interface DRFPaginatedResponse<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
+
 export interface LoginRequest {
   email: string;
   password: string;

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:eventflow_app/core/config/app_config.dart';
+import 'package:eventflow_app/core/services/notification_service.dart';
 import 'package:eventflow_app/core/theme/app_colors.dart';
 import 'package:eventflow_app/core/theme/app_dimens.dart';
 import 'package:eventflow_app/core/theme/design_system.dart';
 import 'package:eventflow_app/core/theme/theme_provider.dart';
+import 'package:eventflow_app/core/utils/external_links.dart';
 import 'package:eventflow_app/core/widgets/demo_banner.dart';
 import 'package:eventflow_app/core/widgets/login_required_sheet.dart';
 import 'package:eventflow_app/features/authentication/presentation/bloc/auth_bloc.dart';
@@ -123,6 +126,32 @@ class SettingsPage extends StatelessWidget {
                 title: 'Roles & Permissions',
                 onTap: () {},
               ),
+              const Divider(height: 1, indent: 56),
+              _SettingTile(
+                icon: Icons.notifications_outlined,
+                iconColor: AppColors.warning,
+                title: 'Push Notifications',
+                onTap: () => _requestNotificationPermission(context),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppDimens.xxl),
+          _buildSectionHeader('Legal'),
+          _buildSettingsCard(
+            children: [
+              _SettingTile(
+                icon: Icons.policy_outlined,
+                iconColor: AppColors.info,
+                title: 'Privacy Policy',
+                onTap: () => openExternalUrl(AppConfig.privacyPolicyUrl),
+              ),
+              const Divider(height: 1, indent: 56),
+              _SettingTile(
+                icon: Icons.description_outlined,
+                iconColor: AppColors.accent,
+                title: 'Terms of Service',
+                onTap: () => openExternalUrl(AppConfig.termsUrl),
+              ),
             ],
           ),
           const SizedBox(height: AppDimens.xxl),
@@ -202,6 +231,26 @@ class SettingsPage extends StatelessWidget {
         border: Border.all(color: AppColors.borderLight),
       ),
       child: Column(children: children),
+    );
+  }
+
+  /// Opt-in point for the OS push permission (Settings). The permission is
+  /// never requested on cold start — see NotificationService.requestPermission.
+  Future<void> _requestNotificationPermission(BuildContext context) async {
+    final granted = await sl<NotificationService>().requestPermission();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          granted
+              ? 'Notification permission granted.'
+              : 'Notification permission not granted.',
+        ),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(DesignSystem.radiusMd),
+        ),
+      ),
     );
   }
 }

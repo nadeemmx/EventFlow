@@ -24,7 +24,10 @@ export function MobileNav() {
   const pathname = usePathname()
 
   return (
-    <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-background border-t border-border">
+    <nav
+      aria-label="Mobile"
+      className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-background border-t border-border"
+    >
       <div className="flex items-center justify-around h-16 px-2">
         {navItems.map((item) => {
           const isActive =
@@ -41,7 +44,7 @@ export function MobileNav() {
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
-              <Icon className="h-5 w-5 shrink-0" />
+              <Icon aria-hidden="true" focusable="false" className="h-5 w-5 shrink-0" />
               <span className="text-[10px] font-medium truncate w-full text-center">
                 {item.label}
               </span>

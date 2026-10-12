@@ -9,6 +9,24 @@ export interface StaffFormData {
   status?: string;
 }
 
+type ApiStaff = Omit<StaffMember, "full_name" | "role"> & {
+  name: string;
+  designation: string;
+};
+
+function fromApi(raw: ApiStaff): StaffMember {
+  return { ...raw, full_name: raw.name, role: raw.designation };
+}
+
+function toApi(data: Partial<StaffFormData>): Partial<StaffFormData> & Record<string, unknown> {
+  const { full_name, role, ...rest } = data;
+  return {
+    ...rest,
+    ...(full_name !== undefined ? { name: full_name } : {}),
+    ...(role !== undefined ? { designation: role } : {}),
+  };
+}
+
 export const staffService = {
   list: async (params?: {
     page?: number;
@@ -17,23 +35,28 @@ export const staffService = {
     status?: string;
     role?: string;
   }) => {
-    const res = await apiClient.get<PaginatedResponse<StaffMember>>("/staff/", { params });
-    return res.data;
+    const { role, ...rest } = params ?? {};
+    const query = {
+      ...rest,
+      ...(role !== undefined ? { designation: role } : {}),
+    };
+    const res = await apiClient.get<PaginatedResponse<ApiStaff>>("/staff/", { params: query });
+    return { ...res.data, data: res.data.data.map(fromApi) };
   },
 
   get: async (id: number) => {
-    const res = await apiClient.get<ApiResponse<StaffMember>>(`/staff/${id}/`);
-    return res.data;
+    const res = await apiClient.get<ApiResponse<ApiStaff>>(`/staff/${id}/`);
+    return { ...res.data, data: fromApi(res.data.data) };
   },
 
   create: async (data: StaffFormData) => {
-    const res = await apiClient.post<ApiResponse<StaffMember>>("/staff/", data);
-    return res.data;
+    const res = await apiClient.post<ApiResponse<ApiStaff>>("/staff/", toApi(data));
+    return { ...res.data, data: fromApi(res.data.data) };
   },
 
   update: async (id: number, data: Partial<StaffFormData>) => {
-    const res = await apiClient.patch<ApiResponse<StaffMember>>(`/staff/${id}/`, data);
-    return res.data;
+    const res = await apiClient.patch<ApiResponse<ApiStaff>>(`/staff/${id}/`, toApi(data));
+    return { ...res.data, data: fromApi(res.data.data) };
   },
 
   delete: async (id: number) => {

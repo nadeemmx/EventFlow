@@ -40,13 +40,13 @@ import { cn } from "@/lib/utils"
 import { useToast } from "@/components/ui/toast"
 
 const LEAD_SOURCES = [
-  "REFERRAL",
   "WEBSITE",
-  "SOCIAL_MEDIA",
+  "GOOGLE",
+  "FACEBOOK",
+  "INSTAGRAM",
+  "WHATSAPP",
   "WALK_IN",
-  "PHONE_INQUIRY",
-  "EVENT",
-  "OTHER",
+  "REFERRAL",
 ] as const
 
 const leadSchema = z.object({
@@ -117,7 +117,7 @@ export default function NewLeadPage() {
       <PageHeader title="Add Lead">
         <Button variant="outline" asChild className="cursor-pointer">
           <Link href="/leads">
-            <ArrowLeft className="h-4 w-4 mr-2" />
+            <ArrowLeft aria-hidden="true" focusable="false" className="h-4 w-4 mr-2" />
             Back
           </Link>
         </Button>
@@ -128,22 +128,28 @@ export default function NewLeadPage() {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>
+                <Label htmlFor="lead-customer" id="lead-customer-label">
                   Customer <span className="text-destructive">*</span>
                 </Label>
                 <Popover open={customerOpen} onOpenChange={setCustomerOpen}>
                   <PopoverTrigger asChild>
                     <Button
+                      id="lead-customer"
                       variant="outline"
                       role="combobox"
                       aria-expanded={customerOpen}
+                      aria-controls="lead-customer-listbox"
+                      aria-labelledby="lead-customer-label"
+                      aria-autocomplete="list"
+                      aria-invalid={errors.customer_id ? true : undefined}
+                      aria-describedby={errors.customer_id ? "customer-id-error" : undefined}
                       className="w-full justify-between font-normal cursor-pointer"
                     >
                       {selectedCustomerName || "Search for a customer..."}
-                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      <ChevronsUpDown aria-hidden="true" focusable="false" className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                  <PopoverContent id="lead-customer-listbox" className="w-[--radix-popover-trigger-width] p-0">
                     <Command>
                       <CommandInput
                         placeholder="Search customers..."
@@ -176,6 +182,8 @@ export default function NewLeadPage() {
                               className="cursor-pointer"
                             >
                               <Check
+                                aria-hidden="true"
+                                focusable="false"
                                 className={cn(
                                   "mr-2 h-4 w-4",
                                   watch("customer_id") === customer.id
@@ -195,7 +203,9 @@ export default function NewLeadPage() {
                   </PopoverContent>
                 </Popover>
                 {errors.customer_id && (
-                  <p className="text-sm text-destructive">{errors.customer_id.message}</p>
+                  <p id="customer-id-error" role="alert" className="text-sm text-destructive">
+                    {errors.customer_id.message}
+                  </p>
                 )}
               </div>
 
@@ -206,7 +216,12 @@ export default function NewLeadPage() {
                 <Select
                   onValueChange={(v) => setValue("event_type", v, { shouldValidate: true })}
                 >
-                  <SelectTrigger id="event_type" className="cursor-pointer">
+                  <SelectTrigger
+                    id="event_type"
+                    aria-invalid={errors.event_type ? true : undefined}
+                    aria-describedby={errors.event_type ? "event-type-error" : undefined}
+                    className="cursor-pointer"
+                  >
                     <SelectValue placeholder="Select event type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -218,7 +233,9 @@ export default function NewLeadPage() {
                   </SelectContent>
                 </Select>
                 {errors.event_type && (
-                  <p className="text-sm text-destructive">{errors.event_type.message}</p>
+                  <p id="event-type-error" role="alert" className="text-sm text-destructive">
+                    {errors.event_type.message}
+                  </p>
                 )}
               </div>
 
@@ -229,7 +246,12 @@ export default function NewLeadPage() {
                 <Select
                   onValueChange={(v) => setValue("lead_source", v, { shouldValidate: true })}
                 >
-                  <SelectTrigger id="lead_source" className="cursor-pointer">
+                  <SelectTrigger
+                    id="lead_source"
+                    aria-invalid={errors.lead_source ? true : undefined}
+                    aria-describedby={errors.lead_source ? "lead-source-error" : undefined}
+                    className="cursor-pointer"
+                  >
                     <SelectValue placeholder="Select source" />
                   </SelectTrigger>
                   <SelectContent>
@@ -241,7 +263,9 @@ export default function NewLeadPage() {
                   </SelectContent>
                 </Select>
                 {errors.lead_source && (
-                  <p className="text-sm text-destructive">{errors.lead_source.message}</p>
+                  <p id="lead-source-error" role="alert" className="text-sm text-destructive">
+                    {errors.lead_source.message}
+                  </p>
                 )}
               </div>
 
@@ -253,7 +277,12 @@ export default function NewLeadPage() {
                   defaultValue="NEW"
                   onValueChange={(v) => setValue("lead_status", v, { shouldValidate: true })}
                 >
-                  <SelectTrigger id="lead_status" className="cursor-pointer">
+                  <SelectTrigger
+                    id="lead_status"
+                    aria-invalid={errors.lead_status ? true : undefined}
+                    aria-describedby={errors.lead_status ? "lead-status-error" : undefined}
+                    className="cursor-pointer"
+                  >
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -265,7 +294,9 @@ export default function NewLeadPage() {
                   </SelectContent>
                 </Select>
                 {errors.lead_status && (
-                  <p className="text-sm text-destructive">{errors.lead_status.message}</p>
+                  <p id="lead-status-error" role="alert" className="text-sm text-destructive">
+                    {errors.lead_status.message}
+                  </p>
                 )}
               </div>
 
@@ -276,10 +307,14 @@ export default function NewLeadPage() {
                 <Input
                   id="expected_event_date"
                   type="date"
+                  aria-invalid={errors.expected_event_date ? true : undefined}
+                  aria-describedby={errors.expected_event_date ? "expected-event-date-error" : undefined}
                   {...register("expected_event_date")}
                 />
                 {errors.expected_event_date && (
-                  <p className="text-sm text-destructive">{errors.expected_event_date.message}</p>
+                  <p id="expected-event-date-error" role="alert" className="text-sm text-destructive">
+                    {errors.expected_event_date.message}
+                  </p>
                 )}
               </div>
 
@@ -291,10 +326,14 @@ export default function NewLeadPage() {
                   id="expected_guest_count"
                   type="number"
                   min={1}
+                  aria-invalid={errors.expected_guest_count ? true : undefined}
+                  aria-describedby={errors.expected_guest_count ? "expected-guest-count-error" : undefined}
                   {...register("expected_guest_count")}
                 />
                 {errors.expected_guest_count && (
-                  <p className="text-sm text-destructive">{errors.expected_guest_count.message}</p>
+                  <p id="expected-guest-count-error" role="alert" className="text-sm text-destructive">
+                    {errors.expected_guest_count.message}
+                  </p>
                 )}
               </div>
 
@@ -328,7 +367,7 @@ export default function NewLeadPage() {
                   </span>
                 ) : (
                   <span className="flex items-center gap-2">
-                    <Save className="h-4 w-4" />
+                    <Save aria-hidden="true" focusable="false" className="h-4 w-4" />
                     Save Lead
                   </span>
                 )}

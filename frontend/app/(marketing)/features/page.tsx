@@ -13,57 +13,57 @@ const features = [
   {
     name: "Booking Management",
     description:
-      "Manage the entire booking lifecycle from enquiry to check-out. Accept instant bookings, send confirmation emails, manage deposits, and track booking statuses in real time. Bulk import events and sync across multiple venue spaces simultaneously.",
+      "Manage the whole booking lifecycle from enquiry to completion. Create and edit bookings with event dates, guest counts, and amounts, move them through draft, tentative, and confirmed statuses, and keep every venue's calendar up to date.",
   },
   {
     name: "Lead CRM",
     description:
-      "Capture, track, and nurture leads with a built-in CRM designed for event venues. Log calls, send quotes, set follow-up reminders, and score leads by intent. Every interaction is stored so your sales team never misses an opportunity.",
+      "Capture and track leads with a built-in CRM designed for event venues. Log enquiries, send quotations, set follow-up reminders, and keep each conversation attached to the lead so nothing is lost between team members.",
   },
   {
     name: "Calendar",
     description:
-      "A drag-and-drop calendar that shows availability across all your venues at a glance. Colour-coded by event type, filterable by space, and shareable as an embed on your website. Syncs with Google Calendar and Outlook.",
+      "A calendar view of your bookings across venues, colour-coded by status and filterable by venue and date, so you can see what is coming up and where the gaps are.",
   },
   {
     name: "Payments",
     description:
-      "Accept payments via Razorpay, Stripe, or bank transfers directly within EventFlow. Collect deposits, schedule instalments, issue refunds, and automatically reconcile payments against invoices. Real-time payment status with webhook notifications.",
+      "Take payments through Razorpay for UPI, cards, and net banking, or record manual payments such as cash, cheque, or bank transfer. Razorpay webhooks confirm captured payments, and every payment is matched against the booking and invoice it belongs to.",
   },
   {
     name: "Invoices",
     description:
-      "Generate professional GST-compliant invoices with a single click. Support for partial payments, credit notes, bulk invoicing, and recurring billing. Send invoices via email or WhatsApp and track when they are viewed or paid.",
+      "Generate invoices from bookings with GST calculated from your business tax details. Record partial payments, export invoices as PDFs, and email them to customers directly from EventFlow.",
   },
   {
-    name: "Staff Management",
+    name: "Staff & Tasks",
     description:
-      "Assign staff to events, track hours, manage shift schedules, and log attendance. Define roles like event manager, coordinator, or security guard. Payroll-ready export with overtime calculations and staff cost allocation per event.",
+      "Keep a staff directory with contacts, designations, and joining dates, then assign tasks with priorities, due dates, and owners so the team knows what needs doing before the next event.",
   },
   {
     name: "Vendor Management",
     description:
-      "Maintain a vendor directory with contacts, contracts, rates, and performance ratings. Send bulk RFQs, compare quotes, and auto-assign vendors to events. Track payments and generate vendor performance reports for future events.",
+      "Maintain a vendor directory with contacts and vendor types, assign vendors to bookings with agreed amounts, and track the status of each assignment. A vendor report shows what you have committed.",
   },
   {
     name: "Reports",
     description:
-      "Pre-built reports for bookings, revenue, occupancy, lead conversion, vendor spend, and staff utilisation. Filter by date range, venue, or event type. Export to PDF or CSV with a single click for stakeholder presentations.",
+      "Reports for revenue, bookings, payments, occupancy, leads, vendors, inventory, outstanding payments, and monthly growth. Filter by date range or venue and export any report to CSV.",
   },
   {
     name: "Analytics",
     description:
-      "Real-time dashboards with KPIs like revenue per available square foot, booking velocity, lead-to-booking conversion rate, and average event value. Trend graphs and forecasting models help you make data-driven pricing decisions.",
+      "A dashboard summary of bookings, revenue, and leads alongside occupancy and lead-conversion reports, so you can see how the business is tracking over time instead of guessing.",
   },
   {
-    name: "Multi-Tenant Architecture",
+    name: "Multi-Venue & Multi-Tenant",
     description:
-      "A single EventFlow instance can serve multiple venues or venues with sub-brands. Each tenant gets isolated data, custom branding, and its own user roles. Centralised billing and cross-venue reporting for multi-location operators.",
+      "Each organisation gets its own isolated data, users, and settings. Manage multiple venues under one account, with bookings, invoices, and reports kept separate per venue.",
   },
   {
     name: "Role-Based Access Control",
     description:
-      "Granular permissions per module — bookings, finance, leads, staff. Define custom roles (e.g., venue manager, accountant, front-desk) with module-level read/write access. Audit logs track every change made by every user.",
+      "Module-level permissions per role — bookings, finance, leads, staff, and settings — with custom roles you can shape for managers, accountants, or front-desk staff. Audit logs record who changed what, and when.",
   },
 ]
 
@@ -81,7 +81,7 @@ export default function FeaturesPage() {
           <SectionHeader
             title="Explore"
             highlight="Every Feature"
-            description="Eleven integrated modules that work together so your operations run smoothly."
+            description="Eleven modules that work together so your operations run smoothly."
           />
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {features.map((feature) => (
@@ -103,9 +103,9 @@ export default function FeaturesPage() {
 
       <PageCTA
         title="Ready to Streamline Your Venue?"
-        highlight="Start Your Free Trial"
-        description="No credit card required. Set up in under 10 minutes."
-        buttonText="Start Free Trial"
+        highlight="Start Free"
+        description="No credit card required to sign up — create an account and set up your venues."
+        buttonText="Create Your Account"
         buttonHref="/signup"
       />
     </>

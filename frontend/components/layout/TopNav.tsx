@@ -24,12 +24,16 @@ export function TopNav({ onMenuToggle }: TopNavProps) {
 
       <div className="flex-1 flex items-center gap-4">
         <div className="hidden sm:block">
-          <h1 className="text-lg font-semibold tracking-tight ">Dashboard</h1>
+          <p className="text-lg font-semibold tracking-tight ">Dashboard</p>
         </div>
 
         <div className="hidden sm:block flex-1 max-w-md ml-auto">
           <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-amber-600 pointer-events-none" />
+            <Search
+              aria-hidden="true"
+              focusable="false"
+              className="absolute left-2.5 top-2.5 h-4 w-4 text-amber-600 pointer-events-none"
+            />
             <Input
               type="search"
               placeholder="Search bookings, customers..."

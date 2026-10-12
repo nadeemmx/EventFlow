@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils"
 import { INVENTORY_CATEGORIES } from "@/lib/constants"
 import type { InventoryItem } from "@/types/api"
 
-const statusFilters = ["All", "IN_STOCK", "LOW_STOCK", "OUT_OF_STOCK"] as const
+const statusFilters = ["All", "ACTIVE", "INACTIVE"] as const
 
 export default function InventoryPage() {
   const router = useRouter()
@@ -110,26 +110,29 @@ export default function InventoryPage() {
             <Button
               variant="ghost"
               size="icon"
+              aria-label="View inventory item"
               className="cursor-pointer"
               onClick={(e) => { e.stopPropagation(); router.push(`/inventory/${inv.id}`) }}
             >
-              <Eye className="h-4 w-4" />
+              <Eye aria-hidden="true" focusable="false" className="h-4 w-4" />
             </Button>
             <Button
               variant="ghost"
               size="icon"
+              aria-label="Edit inventory item"
               className="cursor-pointer"
               onClick={(e) => { e.stopPropagation(); router.push(`/inventory/${inv.id}`) }}
             >
-              <Edit className="h-4 w-4" />
+              <Edit aria-hidden="true" focusable="false" className="h-4 w-4" />
             </Button>
             <Button
               variant="ghost"
               size="icon"
+              aria-label="Delete inventory item"
               className="cursor-pointer text-destructive hover:text-destructive"
               onClick={(e) => { e.stopPropagation(); setDeleteId(inv.id) }}
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 aria-hidden="true" focusable="false" className="h-4 w-4" />
             </Button>
           </div>
         )

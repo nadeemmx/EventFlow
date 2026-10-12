@@ -72,8 +72,24 @@ class LogoutView(APIView):
     def post(self, request):
         serializer = RefreshSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        AuthService().logout(request.user, serializer.validated_data["refresh_token"])
+        AuthService().logout(
+            request.user,
+            serializer.validated_data["refresh_token"],
+            access_token=self._bearer_token(request),
+        )
         return ok(None, "Logged out successfully")
+
+    @staticmethod
+    def _bearer_token(request):
+        """The raw access token on this request, so it can be revoked too.
+
+        Leaving it live meant a stolen access token kept working for the rest
+        of its lifetime after the user logged out (QA-TEST-REPORT-ROLES.md F-3).
+        """
+        header = request.headers.get("Authorization", "")
+        if header.lower().startswith("bearer "):
+            return header[7:].strip()
+        return None
 
 
 class ForgotPasswordView(APIView):

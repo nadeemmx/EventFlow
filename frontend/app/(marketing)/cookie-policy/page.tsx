@@ -1,86 +1,221 @@
 import { createMetadata } from "@/lib/seo"
-import PageHero from "@/components/marketing/PageHero"
-import PageCTA from "@/components/marketing/PageCTA"
+import LegalPage, { LegalSection, LegalList } from "@/components/legal/LegalPage"
+import BusinessField from "@/components/legal/BusinessField"
+import { business } from "@/lib/business"
 
 export const metadata = createMetadata({
   title: "Cookie Policy",
-  description: "EventFlow Cookie Policy. Learn about how we use cookies and similar tracking technologies on our platform.",
+  description:
+    "What cookies and browser storage EventFlow actually uses, and how to control your choices.",
   path: "/cookie-policy",
 })
 
-const sections = [
+const storageItems = [
   {
-    title: "What Are Cookies",
-    content:
-      "Cookies are small text files that are placed on your device when you visit a website. They are widely used to make websites work more efficiently and provide information to website owners. Cookies enable the website to remember your actions and preferences over a period of time, so you do not have to re-enter them each time you return. Similar technologies such as local storage, pixels, and web beacons serve similar purposes.",
+    name: "access_token",
+    type: "Local storage",
+    purpose: "Keeps you signed in to the web app (JWT access token).",
+    duration: "Until you sign out, the token expires, or sign-in state is cleared.",
+    category: "Essential",
   },
   {
-    title: "How We Use Cookies",
-    content:
-      "EventFlow uses cookies to enhance your experience, improve platform performance, and deliver relevant communications. Specifically, we use cookies for authentication and security to keep you logged in and protect your account. We use analytics cookies to understand how you interact with our platform, which helps us improve features and usability. We use functional cookies to remember your preferences and settings. Marketing cookies help us measure the effectiveness of our advertising campaigns.",
+    name: "refresh_token",
+    type: "Local storage",
+    purpose: "Renews your session when the access token expires.",
+    duration: "Until you sign out or the refresh token expires (24 hours).",
+    category: "Essential",
   },
   {
-    title: "Types of Cookies We Use",
-    content:
-      "Strictly Necessary Cookies: These are essential for the platform to function properly. They enable core features such as account authentication, session management, and security. Without these cookies, the platform cannot operate correctly. Performance Cookies: These collect anonymous information about how you use our platform, such as which pages you visit most often and any error messages you encounter. This data helps us improve performance. Functionality Cookies: These remember your preferences and settings, such as language and region. Targeting Cookies: These track your browsing habits to deliver advertising relevant to you and your interests.",
+    name: "user",
+    type: "Local storage",
+    purpose: "Basic profile shown in the interface (name, email, role, tenant).",
+    duration: "Until you sign out.",
+    category: "Essential",
   },
   {
-    title: "Third-Party Cookies",
-    content:
-      "Some cookies on EventFlow are placed by trusted third-party services. We use Google Analytics to understand platform usage patterns. We may use advertising platforms such as Google Ads and LinkedIn to promote our services. These third parties may place cookies on your device. We do not control these cookies and recommend reviewing the privacy policies of these providers. We do not sell your personal data to third parties through cookies.",
+    name: "eventflow_cookie_consent",
+    type: "Local storage",
+    purpose: "Records your cookie choices, the version of this policy and the date you chose.",
+    duration: "Until you change your choices or clear site data.",
+    category: "Essential",
   },
   {
-    title: "Managing Cookies",
-    content:
-      "You can control and manage cookies in several ways. Most web browsers allow you to view, block, or delete cookies through their settings. You can set your browser to reject all cookies or to alert you when a cookie is being placed. Please note that blocking essential cookies may impair the functionality of our platform. You can also opt out of Google Analytics by installing the Google Analytics Opt-out Browser Add-on. To manage marketing cookies, you can visit the Network Advertising Initiative opt-out page.",
+    name: "theme",
+    type: "Local storage",
+    purpose: "Remembers light or dark appearance.",
+    duration: "Persistent until changed or site data is cleared.",
+    category: "Preferences",
   },
   {
-    title: "Updates to This Policy",
-    content:
-      "We may update this Cookie Policy from time to time to reflect changes in technology, regulation, or our practices. When we make material changes, we will notify you through the platform or via email. Your continued use of EventFlow after such changes constitutes acceptance of the updated policy. We encourage you to review this policy periodically. The date of the most recent update is indicated at the top of this policy.",
-  },
-  {
-    title: "Contact Us",
-    content:
-      "If you have questions about our use of cookies or this Cookie Policy, please contact us at privacy@eventflow.com. You may also write to us at: EventFlow Inc., 100 Innovation Drive, Suite 300, San Francisco, CA 94105, United States.",
+    name: "sessionid",
+    type: "Cookie (HttpOnly)",
+    purpose:
+      "Sign-in session for the Django administration site at /admin/ — used by administrators only, never by the web app.",
+    duration: "Browser session.",
+    category: "Essential",
   },
 ]
 
 export default function CookiePolicyPage() {
   return (
-    <>
-      <PageHero
-        title="Cookie Policy"
-        highlight=""
-        description="Last updated: June 15, 2026. Learn about how EventFlow uses cookies and how you can manage them."
-      />
+    <LegalPage
+      title="Cookie"
+      highlight="Policy"
+      description="An accurate list of what this website stores in your browser today — nothing more. Optional categories stay off until you turn them on."
+      updated={business.policyEffectiveDate}
+      cta={{
+        title: "Change your",
+        highlight: "choices any time",
+        description:
+          "Open cookie preferences from the footer of our marketing pages and from the dashboard sidebar to review or update what you allow.",
+        buttonText: "Cookie Policy questions",
+        buttonHref: `mailto:${business.privacyEmail}`,
+      }}
+    >
+      <LegalSection id="what" title="1. What cookies and similar technologies are">
+        <p>
+          Cookies are small text files a website asks your browser to store. Similar
+          technologies include local storage, which lets a site keep data in your browser
+          without sending it to the server on every request, and session storage. This policy
+          covers both cookies and local storage.
+        </p>
+      </LegalSection>
 
-      <section className="py-16 bg-slate-50/50">
-        <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-          <p className="text-slate-600 leading-relaxed mb-8">
-            This Cookie Policy explains what cookies are, how EventFlow uses them, and how you
-            can manage your preferences. By continuing to use our platform, you consent to our
-            use of cookies in accordance with this policy.
-          </p>
-
-          <div className="space-y-10">
-            {sections.map((section) => (
-              <div key={section.title}>
-                <h2 className="text-xl font-semibold text-slate-900 mb-3">{section.title}</h2>
-                <p className="text-slate-600 leading-relaxed">{section.content}</p>
-              </div>
-            ))}
-          </div>
+      <LegalSection id="current" title="2. What EventFlow uses today">
+        <p>
+          As of the date at the top of this page, the EventFlow website and web application
+          set <strong className="text-slate-900">no analytics cookies, no advertising
+          cookies and no social-media trackers</strong>, and load no third-party analytics or
+          advertising scripts. What we do store:
+        </p>
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-sm">
+            <caption className="sr-only">
+              Storage used by EventFlow, its purpose, duration and category
+            </caption>
+            <thead>
+              <tr className="border-b border-slate-300 text-left text-slate-900">
+                <th scope="col" className="py-2 pr-4 font-semibold">Name</th>
+                <th scope="col" className="py-2 pr-4 font-semibold">Type</th>
+                <th scope="col" className="py-2 pr-4 font-semibold">Purpose</th>
+                <th scope="col" className="py-2 pr-4 font-semibold">Duration</th>
+                <th scope="col" className="py-2 font-semibold">Category</th>
+              </tr>
+            </thead>
+            <tbody className="text-slate-600">
+              {storageItems.map((item) => (
+                <tr key={item.name} className="border-b border-slate-200 align-top">
+                  <th scope="row" className="py-3 pr-4 font-mono text-xs font-medium text-slate-900">
+                    {item.name}
+                  </th>
+                  <td className="py-3 pr-4">{item.type}</td>
+                  <td className="py-3 pr-4">{item.purpose}</td>
+                  <td className="py-3 pr-4">{item.duration}</td>
+                  <td className="py-3">{item.category}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      </section>
+        <p>
+          Because auth tokens are stored in local storage rather than HttpOnly cookies, they
+          are readable by scripts running on the page. We mitigate this with strict output
+          practices and security headers, and we are evaluating moving tokens to HttpOnly
+          cookies — see section 7.
+        </p>
+      </LegalSection>
 
-      <PageCTA
-        title="Have questions about"
-        highlight="cookies?"
-        description="Our privacy team is available to answer any questions about how we use tracking technologies."
-        buttonText="Contact Us"
-        buttonHref="mailto:privacy@eventflow.com"
-      />
-    </>
+      <LegalSection id="third-party" title="3. Third-party requests from this website">
+        <LegalList>
+          <li>
+            <strong className="text-slate-900">Google Fonts</strong> — the site loads the
+            Inter typeface from fonts.googleapis.com / fonts.gstatic.com. Your browser
+            requests those files directly, so Google receives your IP address. Google may set
+            its own cookies in the process; we do not control them.
+          </li>
+          <li>
+            <strong className="text-slate-900">No other third-party scripts</strong> — no
+            analytics, advertising, chat widget, tag manager or social embed is loaded on this
+            website.
+          </li>
+          <li>
+            <strong className="text-slate-900">Payment pages</strong> — when you pay, Razorpay
+            handles the checkout. Any storage it uses is governed by Razorpay&apos;s own
+            policy.
+          </li>
+        </LegalList>
+      </LegalSection>
+
+      <LegalSection id="choices" title="4. Your choices and how consent works">
+        <LegalList>
+          <li>
+            A consent banner appears when we have no record of your choice. It explains the
+            categories and offers three equal options: <em>Accept all</em>,{" "}
+            <em>Reject non-essential</em> and <em>Manage preferences</em>.
+          </li>
+          <li>
+            Optional categories are never pre-selected, and no optional technology loads
+            before you make a choice. Browsing or scrolling the site is not treated as
+            consent.
+          </li>
+          <li>
+            Essential storage always stays on because the product cannot function without it —
+            rejecting non-essential categories does not sign you out or break core features.
+          </li>
+          <li>
+            You can change your mind at any time using{" "}
+            <strong className="text-slate-900">Cookie preferences</strong> in the footer of
+            our marketing pages, and from the dashboard sidebar. Your choice is stored with the
+            policy version and a timestamp.
+          </li>
+        </LegalList>
+      </LegalSection>
+
+      <LegalSection id="browser" title="5. Browser controls">
+        <p>
+          You can also delete or block storage through your browser settings. Blocking all
+          storage will sign you out and prevent you from staying signed in. Most browsers
+          let you clear data for a single site, which is the simplest way to reset both your
+          session and your consent record.
+        </p>
+      </LegalSection>
+
+      <LegalSection id="updates" title="6. Updates to this policy">
+        <p>
+          If we ever add analytics, advertising or other optional technologies, they will be
+          listed here first, the consent banner will describe them, and they will remain off
+          until you opt in. We update the &quot;last updated&quot; date whenever this policy
+          changes.
+        </p>
+      </LegalSection>
+
+      <LegalSection id="security-note" title="7. Why we are revising storage">
+        <p>
+          We previously described analytics and advertising cookies that this site does not
+          use, and treated continued browsing as consent — both have been removed. We are also
+          reviewing whether authentication tokens can move from local storage to HttpOnly
+          cookies for stronger protection against script-based theft; that change will be
+          documented here when it ships.
+        </p>
+      </LegalSection>
+
+      <LegalSection id="contact" title="8. Contact">
+        <p>
+          Questions about cookies or storage:{" "}
+          <a
+            href={`mailto:${business.privacyEmail}`}
+            className="underline text-slate-900"
+          >
+            {business.privacyEmail}
+          </a>
+          . Business details: <BusinessField value={business.legalName} label="Legal entity name" />,{" "}
+          <BusinessField value={business.address} label="Registered address" />. See also our{" "}
+          <a href="/privacy-policy/" className="underline text-slate-900">
+            Privacy Policy
+          </a>
+          .
+        </p>
+      </LegalSection>
+    </LegalPage>
   )
 }

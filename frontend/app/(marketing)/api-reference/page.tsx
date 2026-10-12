@@ -1,206 +1,152 @@
 import { createMetadata } from "@/lib/seo"
 import PageHero from "@/components/marketing/PageHero"
 import PageCTA from "@/components/marketing/PageCTA"
-import { CheckCircle, XCircle, AlertTriangle, Copy } from "lucide-react"
+import { XCircle } from "lucide-react"
 
 export const metadata = createMetadata({
   title: "API Reference",
-  description: "Complete API reference for EventFlow. Explore endpoints for bookings, customers, payments, and more with request and response examples.",
+  description:
+    "Reference for the EventFlow REST API: authentication, bookings and customers endpoints, with request and sample response examples.",
   path: "/api-reference",
 })
 
+const baseUrl = "https://api.eventflow.com/api/v1"
+
 const endpoints = [
   {
-    method: "GET",
-    path: "/bookings",
-    description: "Retrieve a list of all bookings with optional filtering by date, venue, or status.",
-    request: `curl https://api.eventflow.com/v1/bookings \\
-  -H "Authorization: Bearer $EVENTFLOW_API_KEY" \\
-  -H "Content-Type: application/json"`,
+    method: "POST",
+    path: "/api/v1/auth/login/",
+    description:
+      "Sign in with your EventFlow account credentials and receive a JWT access token plus a refresh token.",
+    request: `curl -X POST ${baseUrl}/auth/login/ \\
+  -H "Content-Type: application/json" \\
+  -d '{"email": "you@yourvenue.com", "password": "your-password"}'`,
     response: `{
-  "data": [
-    {
-      "id": "b_xyz789",
-      "venue_id": "v_abc123",
-      "event_name": "Summer Wedding",
-      "date": "2026-08-20",
-      "status": "confirmed",
-      "guest_count": 180,
-      "customer": {
-        "name": "Emily Davis",
-        "email": "emily@example.com"
-      },
-      "total": 12500.00,
-      "currency": "usd",
-      "created_at": "2026-06-01T14:30:00Z"
-    }
-  ],
-  "meta": {
-    "total": 42,
-    "page": 1,
-    "per_page": 25
+  "success": true,
+  "message": "Login successful",
+  "data": {
+    "access_token": "<access_token>",
+    "refresh_token": "<refresh_token>",
+    "user": { "id": 1, "email": "you@yourvenue.com", "role": "OWNER" }
   }
 }`,
-    errors: ["400 Invalid filter parameter", "401 Unauthorized", "403 Forbidden"],
+    errors: ["400 Validation error", "401 Invalid credentials", "429 Too many requests"],
+  },
+  {
+    method: "GET",
+    path: "/api/v1/bookings/",
+    description:
+      "List the bookings in your account, with optional filtering by status, venue or event type, plus search and pagination.",
+    request: `curl ${baseUrl}/bookings/ \\
+  -H "Authorization: Bearer <access_token>" \\
+  -H "Content-Type: application/json"`,
+    response: `{
+  "success": true,
+  "data": [
+    {
+      "id": 12,
+      "booking_number": "BK-000012",
+      "venue": 1,
+      "venue_name": "Main Hall",
+      "customer": 7,
+      "customer_name": "A. Sharma",
+      "event_type": "wedding",
+      "event_date": "2026-08-20",
+      "guest_count": 180,
+      "total_amount": 450000,
+      "advance_amount": 50000,
+      "status": "CONFIRMED"
+    }
+  ],
+  "pagination": { "page": 1, "page_size": 20, "total_records": 1, "total_pages": 1 }
+}`,
+    errors: ["400 Invalid filter parameter", "401 Unauthorized", "429 Too many requests"],
   },
   {
     method: "POST",
-    path: "/bookings",
-    description: "Create a new booking for a venue. Requires venue availability and valid customer details.",
-    request: `curl -X POST https://api.eventflow.com/v1/bookings \\
-  -H "Authorization: Bearer $EVENTFLOW_API_KEY" \\
+    path: "/api/v1/bookings/",
+    description:
+      "Create a booking. The venue and customer records must already exist in your account.",
+    request: `curl -X POST ${baseUrl}/bookings/ \\
+  -H "Authorization: Bearer <access_token>" \\
   -H "Content-Type: application/json" \\
   -d '{
-  "venue_id": "v_abc123",
-  "event_name": "Corporate Retreat",
-  "date": "2026-09-10",
-  "start_time": "09:00",
-  "end_time": "17:00",
+  "venue": 1,
+  "customer": 7,
+  "event_type": "wedding",
+  "event_date": "2026-09-10",
   "guest_count": 50,
-  "customer": {
-    "name": "Michael Brown",
-    "email": "michael@acme.com",
-    "phone": "+1-555-987-6543"
-  }
+  "total_amount": 120000,
+  "advance_amount": 20000
 }'`,
     response: `{
-  "id": "b_xyz790",
-  "venue_id": "v_abc123",
-  "event_name": "Corporate Retreat",
-  "date": "2026-09-10",
-  "status": "pending_confirmation",
-  "guest_count": 50,
-  "total": 4500.00,
-  "currency": "usd",
-  "created_at": "2026-06-15T10:00:00Z"
+  "success": true,
+  "message": "Booking created",
+  "data": { "id": 13, "booking_number": "BK-000013", "status": "DRAFT", "event_date": "2026-09-10" }
 }`,
-    errors: ["400 Validation error", "409 Venue unavailable", "422 Unprocessable entity"],
+    errors: ["400 Validation error", "401 Unauthorized", "403 Not permitted"],
   },
   {
     method: "GET",
-    path: "/bookings/:id",
-    description: "Retrieve details for a specific booking by its unique identifier.",
-    request: `curl https://api.eventflow.com/v1/bookings/b_xyz789 \\
-  -H "Authorization: Bearer $EVENTFLOW_API_KEY"`,
+    path: "/api/v1/bookings/:id/",
+    description: "Retrieve a single booking by its id.",
+    request: `curl ${baseUrl}/bookings/12/ \\
+  -H "Authorization: Bearer <access_token>"`,
     response: `{
-  "id": "b_xyz789",
-  "venue_id": "v_abc123",
-  "event_name": "Summer Wedding",
-  "date": "2026-08-20",
-  "status": "confirmed",
-  "guest_count": 180,
-  "special_requests": "Vegetarian meals for 30 guests",
-  "customer": {
-    "name": "Emily Davis",
-    "email": "emily@example.com",
-    "phone": "+1-555-456-7890"
-  },
-  "total": 12500.00,
-  "currency": "usd",
-  "created_at": "2026-06-01T14:30:00Z",
-  "updated_at": "2026-06-10T09:15:00Z"
+  "success": true,
+  "data": { "id": 12, "booking_number": "BK-000012", "status": "CONFIRMED", "event_date": "2026-08-20" }
 }`,
-    errors: ["401 Unauthorized", "404 Booking not found"],
+    errors: ["401 Unauthorized", "404 Not found"],
   },
   {
     method: "PUT",
-    path: "/bookings/:id",
-    description: "Update an existing booking. Partial updates are supported.",
-    request: `curl -X PUT https://api.eventflow.com/v1/bookings/b_xyz789 \\
-  -H "Authorization: Bearer $EVENTFLOW_API_KEY" \\
+    path: "/api/v1/bookings/:id/",
+    description: "Update an existing booking.",
+    request: `curl -X PUT ${baseUrl}/bookings/12/ \\
+  -H "Authorization: Bearer <access_token>" \\
   -H "Content-Type: application/json" \\
   -d '{
   "guest_count": 200,
-  "special_requests": "Updated vegetarian meals count to 40"
+  "remarks": "Updated guest count"
 }'`,
     response: `{
-  "id": "b_xyz789",
-  "venue_id": "v_abc123",
-  "event_name": "Summer Wedding",
-  "date": "2026-08-20",
-  "status": "confirmed",
-  "guest_count": 200,
-  "special_requests": "Updated vegetarian meals count to 40",
-  "updated_at": "2026-06-18T11:45:00Z"
+  "success": true,
+  "data": { "id": 12, "booking_number": "BK-000012", "guest_count": 200 }
 }`,
-    errors: ["400 Validation error", "404 Booking not found", "409 Conflict"],
+    errors: ["400 Validation error", "401 Unauthorized", "404 Not found"],
   },
   {
     method: "DELETE",
-    path: "/bookings/:id",
-    description: "Cancel and delete a booking. May be subject to cancellation policies.",
-    request: `curl -X DELETE https://api.eventflow.com/v1/bookings/b_xyz789 \\
-  -H "Authorization: Bearer $EVENTFLOW_API_KEY"`,
+    path: "/api/v1/bookings/:id/",
+    description: "Delete a booking. Cancellation and refund handling is done in the app, not by this endpoint.",
+    request: `curl -X DELETE ${baseUrl}/bookings/12/ \\
+  -H "Authorization: Bearer <access_token>"`,
     response: `{
-  "id": "b_xyz789",
-  "status": "cancelled",
-  "cancelled_at": "2026-06-20T16:00:00Z",
-  "refund": {
-    "amount": 12500.00,
-    "currency": "usd",
-    "status": "pending"
-  }
+  "success": true,
+  "message": "Booking deleted"
 }`,
-    errors: ["401 Unauthorized", "404 Booking not found", "409 Cannot cancel past event"],
+    errors: ["401 Unauthorized", "404 Not found"],
   },
   {
     method: "GET",
-    path: "/customers",
-    description: "List all customers with search and pagination support.",
-    request: `curl https://api.eventflow.com/v1/customers?search=jane&page=1 \\
-  -H "Authorization: Bearer $EVENTFLOW_API_KEY"`,
+    path: "/api/v1/customers/",
+    description: "List customers with search and pagination support.",
+    request: `curl "${baseUrl}/customers/?search=jane" \\
+  -H "Authorization: Bearer <access_token>"`,
     response: `{
+  "success": true,
   "data": [
     {
-      "id": "c_456def",
-      "name": "Jane Smith",
+      "id": 7,
+      "full_name": "Jane Smith",
       "email": "jane@example.com",
-      "phone": "+1-555-123-4567",
-      "total_bookings": 3,
-      "total_spent": 28500.00,
+      "mobile": "+91 98765 43210",
       "created_at": "2026-01-15T08:00:00Z"
     }
   ],
-  "meta": {
-    "total": 1,
-    "page": 1,
-    "per_page": 25
-  }
+  "pagination": { "page": 1, "page_size": 20, "total_records": 1, "total_pages": 1 }
 }`,
-    errors: ["400 Invalid search parameter", "401 Unauthorized"],
-  },
-  {
-    method: "POST",
-    path: "/payments",
-    description: "Process a payment for a booking. Supports major credit cards and digital wallets.",
-    request: `curl -X POST https://api.eventflow.com/v1/payments \\
-  -H "Authorization: Bearer $EVENTFLOW_API_KEY" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-  "booking_id": "b_xyz790",
-  "amount": 4500.00,
-  "currency": "usd",
-  "payment_method": "card",
-  "card": {
-    "number": "4242424242424242",
-    "exp_month": 12,
-    "exp_year": 2028,
-    "cvc": "123"
-  }
-}'`,
-    response: `{
-  "id": "p_321fed",
-  "booking_id": "b_xyz790",
-  "amount": 4500.00,
-  "currency": "usd",
-  "status": "succeeded",
-  "payment_method": "card",
-  "card_brand": "visa",
-  "last4": "4242",
-  "receipt_url": "https://dashboard.eventflow.com/receipts/p_321fed",
-  "created_at": "2026-06-15T10:05:00Z"
-}`,
-    errors: ["400 Validation error", "402 Payment failed", "404 Booking not found"],
+    errors: ["400 Invalid search parameter", "401 Unauthorized", "429 Too many requests"],
   },
 ]
 
@@ -217,39 +163,59 @@ export default function ApiReferencePage() {
       <PageHero
         title="API Reference"
         highlight=""
-        description="Explore every endpoint in the EventFlow API. All requests must be authenticated and made over HTTPS."
+        description="The endpoints the EventFlow app itself uses. All requests must be authenticated and made over HTTPS."
       />
 
       <section className="py-16 bg-slate-50/50">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-4 gap-6 mb-12">
-            <div className="bg-white rounded-xl border border-slate-200 p-5 text-center">
-              <div className="text-3xl font-bold text-slate-900">7</div>
-              <div className="text-sm text-slate-500">Endpoints</div>
-            </div>
-            <div className="bg-white rounded-xl border border-slate-200 p-5 text-center">
-              <div className="text-3xl font-bold text-emerald-600">99.9%</div>
-              <div className="text-sm text-slate-500">Uptime SLA</div>
-            </div>
-            <div className="bg-white rounded-xl border border-slate-200 p-5 text-center">
-              <div className="text-3xl font-bold text-slate-900">&lt;50ms</div>
-              <div className="text-sm text-slate-500">Avg Response</div>
-            </div>
-            <div className="bg-white rounded-xl border border-slate-200 p-5 text-center">
-              <div className="text-3xl font-bold text-amber-600">v1</div>
-              <div className="text-sm text-slate-500">API Version</div>
-            </div>
+          <div className="mb-12">
+            <h2 className="text-2xl font-bold text-slate-900 mb-4">Using the API</h2>
+            <dl className="grid sm:grid-cols-3 gap-6">
+              <div className="bg-white rounded-xl border border-slate-200 p-5">
+                <dt className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                  Base URL
+                </dt>
+                <dd className="text-sm font-mono text-slate-800 break-all">{baseUrl}/</dd>
+              </div>
+              <div className="bg-white rounded-xl border border-slate-200 p-5">
+                <dt className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                  Authentication
+                </dt>
+                <dd className="text-sm text-slate-700">
+                  JWT. Post your credentials to <code className="text-xs">/api/v1/auth/login/</code>{" "}
+                  and send <code className="text-xs">Authorization: Bearer &lt;access_token&gt;</code>{" "}
+                  on every request.
+                </dd>
+              </div>
+              <div className="bg-white rounded-xl border border-slate-200 p-5">
+                <dt className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                  Version
+                </dt>
+                <dd className="text-sm text-slate-700">v1</dd>
+              </div>
+            </dl>
+            <p className="mt-4 text-sm text-slate-600">
+              Payments are not taken through this API. Card and UPI payments are collected through
+              the Razorpay checkout in the app, and recorded against bookings from there.
+            </p>
           </div>
+
+          <h2 className="text-2xl font-bold text-slate-900 mb-6">Endpoints</h2>
 
           <div className="space-y-8">
             {endpoints.map((ep) => (
-              <div key={`${ep.method}-${ep.path}`} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+              <div
+                key={`${ep.method}-${ep.path}`}
+                className="bg-white rounded-xl border border-slate-200 overflow-hidden"
+              >
                 {/* Endpoint header */}
-                <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-bold ${methodColors[ep.method]}`}>
+                <div className="flex flex-wrap items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50">
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-bold ${methodColors[ep.method]}`}
+                  >
                     {ep.method}
                   </span>
-                  <code className="text-sm font-mono text-slate-800">{ep.path}</code>
+                  <h3 className="text-sm font-mono text-slate-800">{ep.path}</h3>
                 </div>
 
                 <div className="p-6 space-y-6">
@@ -257,7 +223,9 @@ export default function ApiReferencePage() {
 
                   {/* Request */}
                   <div>
-                    <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Request</h4>
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                      Request
+                    </p>
                     <pre className="bg-slate-900 text-slate-100 rounded-lg p-4 text-sm overflow-x-auto">
                       <code>{ep.request}</code>
                     </pre>
@@ -265,19 +233,30 @@ export default function ApiReferencePage() {
 
                   {/* Response */}
                   <div>
-                    <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Response</h4>
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                      Sample response (illustrative)
+                    </p>
                     <pre className="bg-slate-900 text-slate-100 rounded-lg p-4 text-sm overflow-x-auto">
                       <code>{ep.response}</code>
                     </pre>
+                    <p className="mt-2 text-xs text-slate-500">
+                      Illustrative only — field names and shapes may differ from your account&apos;s
+                      live responses.
+                    </p>
                   </div>
 
                   {/* Error codes */}
                   <div>
-                    <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Error Codes</h4>
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                      Error Codes
+                    </p>
                     <div className="flex flex-wrap gap-2">
                       {ep.errors.map((err) => (
-                        <span key={err} className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-50 text-red-700 rounded-md text-xs font-medium">
-                          <XCircle className="w-3 h-3" />
+                        <span
+                          key={err}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-50 text-red-700 rounded-md text-xs font-medium"
+                        >
+                          <XCircle className="w-3 h-3" aria-hidden="true" focusable="false" />
                           {err}
                         </span>
                       ))}
@@ -291,11 +270,11 @@ export default function ApiReferencePage() {
       </section>
 
       <PageCTA
-        title="Start building with"
-        highlight="EventFlow."
-        description="Get your API keys, explore our SDKs, and join thousands of venues transforming their operations."
-        buttonText="Get API Keys"
-        buttonHref="/login"
+        title="API access is part of"
+        highlight="an EventFlow account"
+        description="Sign in and call the API with your own access token. If you have questions about access or usage, contact us and we will help."
+        buttonText="Contact Us"
+        buttonHref="/contact"
       />
     </>
   )

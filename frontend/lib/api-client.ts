@@ -1,7 +1,23 @@
 import axios from "axios";
 
+// NEXT_PUBLIC_API_URL is inlined at build time. In development it may be
+// absent (fall back to the local Django dev server); in a production build
+// next.config.mjs guarantees it is set, so never fall back to localhost there.
+const apiBaseUrl =
+  process.env.NEXT_PUBLIC_API_URL ||
+  (process.env.NODE_ENV !== "production"
+    ? "http://localhost:8000/api/v1"
+    : undefined);
+
+if (!apiBaseUrl) {
+  throw new Error(
+    "NEXT_PUBLIC_API_URL is missing from this production build. " +
+      "Rebuild with frontend/.env.production (or NEXT_PUBLIC_API_URL exported)."
+  );
+}
+
 const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1",
+  baseURL: apiBaseUrl,
   headers: { "Content-Type": "application/json" },
   timeout: 30000, // 30 second default timeout
 });
@@ -16,8 +32,62 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
+interface PaginationMeta {
+  page: number;
+  page_size: number;
+  total_records: number;
+  total_pages: number;
+}
+
+/**
+ * The API mixes two response shapes:
+ * - envelope:  { success, message, data, pagination? }
+ * - DRF/plain: { count, next, previous, results } for list endpoints and bare
+ *              objects for retrieve/create/update on a few viewsets.
+ *
+ * The app is written against the envelope shape, so every successful JSON body
+ * is normalized to it here. Original DRF keys are preserved so callers that
+ * read `results`/`count` keep working.
+ */
+function normalizeResponseBody(body: unknown, params: unknown): unknown {
+  if (typeof Blob !== "undefined" && body instanceof Blob) return body;
+  if (body instanceof ArrayBuffer) return body;
+
+  const isPlainObject =
+    typeof body === "object" && body !== null && !Array.isArray(body);
+  if (!isPlainObject && !Array.isArray(body)) return body;
+
+  const record = body as Record<string, unknown>;
+  if ("success" in record) return body;
+
+  if (Array.isArray(record.results) && typeof record.count === "number") {
+    const query = (params ?? {}) as Record<string, unknown>;
+    const page = Number(query.page) || 1;
+    const pageSize = Number(query.page_size) || 20;
+    const totalRecords = record.count;
+    const pagination: PaginationMeta = {
+      page,
+      page_size: pageSize,
+      total_records: totalRecords,
+      total_pages: Math.max(1, Math.ceil(totalRecords / pageSize)),
+    };
+    return {
+      ...record,
+      success: true,
+      message: "Operation successful",
+      data: record.results,
+      pagination,
+    };
+  }
+
+  return { success: true, message: "Operation successful", data: body };
+}
+
 apiClient.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    res.data = normalizeResponseBody(res.data, res.config?.params);
+    return res;
+  },
   async (error) => {
     if (error.response?.status === 401 && typeof window !== "undefined") {
       const refreshToken = localStorage.getItem("refresh_token");

@@ -8,6 +8,7 @@ from apps.settings.models import (
 from apps.tenants.models import Tenant
 from apps.users.models import User
 from core.choices import UserRole
+from core.validators import validate_mobile
 
 
 class PaymentGatewaySettingsSerializer(serializers.ModelSerializer):
@@ -165,13 +166,15 @@ class OrganizationSettingsSerializer(serializers.ModelSerializer):
             "logo",
         ]
         read_only_fields = ["id"]
+        extra_kwargs = {"mobile": {"validators": [validate_mobile]}}
 
 
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ["id", "full_name", "email", "mobile"]
-        read_only_fields = ["id"]
+        fields = ["id", "full_name", "email", "mobile", "role"]
+        read_only_fields = ["id", "role"]
+        extra_kwargs = {"mobile": {"validators": [validate_mobile]}}
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -184,6 +187,7 @@ class UserSerializer(serializers.ModelSerializer):
             "password", "created_at", "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
+        extra_kwargs = {"mobile": {"validators": [validate_mobile]}}
 
     def create(self, validated_data):
         password = validated_data.pop("password", None)

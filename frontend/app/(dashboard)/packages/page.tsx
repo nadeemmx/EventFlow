@@ -96,14 +96,14 @@ export default function PackagesPage() {
         const pkg = item as unknown as Package
         return (
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" className="cursor-pointer" onClick={(e) => { e.stopPropagation(); router.push(`/packages/${pkg.id}`) }}>
-              <Eye className="h-4 w-4" />
+            <Button variant="ghost" size="icon" aria-label="View package" className="cursor-pointer" onClick={(e) => { e.stopPropagation(); router.push(`/packages/${pkg.id}`) }}>
+              <Eye aria-hidden="true" focusable="false" className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" className="cursor-pointer" onClick={(e) => { e.stopPropagation(); router.push(`/packages/${pkg.id}`) }}>
-              <Edit className="h-4 w-4" />
+            <Button variant="ghost" size="icon" aria-label="Edit package" className="cursor-pointer" onClick={(e) => { e.stopPropagation(); router.push(`/packages/${pkg.id}`) }}>
+              <Edit aria-hidden="true" focusable="false" className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" className="cursor-pointer text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); setDeleteId(pkg.id) }}>
-              <Trash2 className="h-4 w-4" />
+            <Button variant="ghost" size="icon" aria-label="Delete package" className="cursor-pointer text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); setDeleteId(pkg.id) }}>
+              <Trash2 aria-hidden="true" focusable="false" className="h-4 w-4" />
             </Button>
           </div>
         )

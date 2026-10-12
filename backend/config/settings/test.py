@@ -26,6 +26,8 @@ REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {
     "password_reset": "10000/minute",
     "token_refresh": "10000/minute",
     "password_change": "10000/minute",
+    "privacy_request": "10000/minute",
+    "contact": "10000/minute",
 }
 
 CACHES = {

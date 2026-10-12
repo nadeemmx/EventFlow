@@ -146,14 +146,20 @@ MODULE_PERMISSIONS = {
         "retrieve": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF],
         "mark_read": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF],
     },
+    "privacy": {
+        "list": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "retrieve": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "update": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+    },
     "audit_logs": {
         "list": [UserRole.SUPER_ADMIN, UserRole.OWNER],
         "retrieve": [UserRole.SUPER_ADMIN, UserRole.OWNER],
     },
     "reports": {
-        "financial": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT],
-        "operational": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER],
-        "subscription": [UserRole.SUPER_ADMIN],
+        # NB: only actions that ReportViewSet actually defines belong here.
+        # "financial"/"operational"/"subscription" used to be declared but had
+        # no matching @action, so they 404'd for every role (QA-TEST-REPORT-
+        # ROLES.md F-2) — matrix drift that misleads an access-control audit.
         "revenue": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.ACCOUNTANT],
         "bookings": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF],
         "payments": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.ACCOUNTANT],
@@ -166,7 +172,9 @@ MODULE_PERMISSIONS = {
         "export": [UserRole.SUPER_ADMIN, UserRole.OWNER],
     },
     "settings": {
-        "read": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        # "read" was removed: SettingsViewSet is a GenericViewSet with no list/
+        # retrieve and no @action named read, so the entry was never routable
+        # — dead-matrix drift of the same kind as reports F-2.
         "update": [UserRole.SUPER_ADMIN, UserRole.OWNER],
         "payment_gateway": [UserRole.SUPER_ADMIN, UserRole.OWNER],
         "whatsapp": [UserRole.SUPER_ADMIN, UserRole.OWNER],
@@ -191,6 +199,11 @@ MODULE_PERMISSIONS = {
         "summary": [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.MANAGER, UserRole.ACCOUNTANT, UserRole.STAFF],
     },
     "subscriptions": {
+        "list": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "retrieve": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "create": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "update": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        "destroy": [UserRole.SUPER_ADMIN, UserRole.OWNER],
         "plans": [UserRole.SUPER_ADMIN],
         "current": [UserRole.SUPER_ADMIN, UserRole.OWNER],
         "history": [UserRole.SUPER_ADMIN, UserRole.OWNER],
@@ -202,7 +215,9 @@ MODULE_PERMISSIONS = {
         "retrieve": [UserRole.SUPER_ADMIN, UserRole.OWNER],
         "update": [UserRole.SUPER_ADMIN, UserRole.OWNER],
         "partial_update": [UserRole.SUPER_ADMIN, UserRole.OWNER],
-        "settings": [UserRole.SUPER_ADMIN, UserRole.OWNER],
+        # "settings" was removed: TenantViewSet.tenant_settings exists as a
+        # plain method with no @action, so it is not routed and the entry 404'd
+        # for every role — the same dead-matrix drift as reports F-2.
     },
 }
 

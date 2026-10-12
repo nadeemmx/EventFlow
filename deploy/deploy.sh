@@ -11,8 +11,18 @@ BACKEND_DIR="${DEPLOY_DIR}/python/eventflow-api"
 FRONTEND_DIR="${DEPLOY_DIR}/frontend/public_html"
 MEDIA_DIR="${DEPLOY_DIR}/media"
 LOG_DIR="${BACKEND_DIR}/logs"
+REPO_DIR="${DEPLOY_DIR}/eventflow"
+
+# Domains (override via environment — this script never invents one).
+API_HOST="${API_HOST:-api.eventflow.com}"
+APP_HOST="${APP_HOST:-app.eventflow.com}"
+MEDIA_HOST="${MEDIA_HOST:-media.eventflow.com}"
+CERT_NAME="${CERT_NAME:-eventflow.com}"
 
 echo "=== EventFlow VPS Deployment ==="
+echo "  API:   ${API_HOST}"
+echo "  App:   ${APP_HOST}"
+echo "  Media: ${MEDIA_HOST}"
 echo ""
 
 # Detect MySQL/MariaDB service name
@@ -48,10 +58,16 @@ mkdir -p "${DEPLOY_DIR}/scripts"
 mkdir -p "${DEPLOY_DIR}/backups/daily" "${DEPLOY_DIR}/backups/weekly"
 chown -R "${DEPLOY_USER}:${DEPLOY_USER}" "${DEPLOY_DIR}"
 
-# 3. Copy backend files
-echo "[3/14] Copying backend files..."
-rsync -av --exclude='__pycache__' --exclude='*.pyc' --exclude='.env' \
-    /tmp/eventflow-deploy/backend/ "${BACKEND_DIR}/"
+# 3. Copy project + backend files
+echo "[3/14] Copying project files..."
+rsync -a --exclude='__pycache__' --exclude='*.pyc' --exclude='.env' \
+    --exclude='node_modules' --exclude='.next' --exclude='out' \
+    --exclude='venv' --exclude='logs' --exclude='staticfiles' \
+    /tmp/eventflow-deploy/ "${REPO_DIR}/"
+rsync -a --delete --exclude='__pycache__' --exclude='*.pyc' --exclude='.env' \
+    --exclude='venv' --exclude='logs' --exclude='staticfiles' \
+    --exclude='*.sqlite3' \
+    "${REPO_DIR}/backend/" "${BACKEND_DIR}/"
 
 # 4. Set up Python virtual environment
 echo "[4/14] Setting up Python virtual environment..."
@@ -75,7 +91,7 @@ if [ ! -f "${BACKEND_DIR}/.env" ]; then
     cat > "${BACKEND_DIR}/.env" << EOF
 DJANGO_SETTINGS_MODULE=config.settings.production
 DJANGO_SECRET_KEY=${SECRET_KEY}
-DJANGO_ALLOWED_HOSTS=api.eventflow.com
+DJANGO_ALLOWED_HOSTS=${API_HOST},localhost,127.0.0.1
 DJANGO_DEBUG=False
 DB_NAME=eventflow
 DB_USER=eventflow
@@ -84,9 +100,12 @@ DB_HOST=127.0.0.1
 DB_PORT=3306
 REDIS_URL=redis://127.0.0.1:6379/0
 ENCRYPTION_KEY=${ENCRYPTION_KEY}
-CORS_ALLOWED_ORIGINS=https://app.eventflow.com
-CSRF_TRUSTED_ORIGINS=https://app.eventflow.com,https://api.eventflow.com
-DEFAULT_FROM_EMAIL=noreply@eventflow.com
+CORS_ALLOWED_ORIGINS=https://${APP_HOST}
+CSRF_TRUSTED_ORIGINS=https://${APP_HOST},https://${API_HOST}
+DEFAULT_FROM_EMAIL=noreply@${CERT_NAME}
+# Frontend build input (read by deploy_production.sh as a fallback when
+# frontend/.env.production is absent). Not a secret.
+NEXT_PUBLIC_API_URL=https://${API_HOST}/api/v1
 EOF
     chmod 600 "${BACKEND_DIR}/.env"
     chown "${DEPLOY_USER}:${DEPLOY_USER}" "${BACKEND_DIR}/.env"
@@ -105,19 +124,44 @@ sudo -u "${DEPLOY_USER}" "${BACKEND_DIR}/venv/bin/python" manage.py migrate --no
 sudo -u "${DEPLOY_USER}" "${BACKEND_DIR}/venv/bin/python" manage.py collectstatic --noinput
 sudo -u "${DEPLOY_USER}" "${BACKEND_DIR}/venv/bin/python" manage.py reencrypt_fields --dry-run || true
 
-# 9. Copy frontend files
-echo "[9/14] Copying frontend files..."
-rsync -av /tmp/eventflow-deploy/frontend-build/ "${FRONTEND_DIR}/"
+# 9. Build + install frontend (`next build` / `next start`)
+echo "[9/14] Building frontend..."
+# NEXT_PUBLIC_API_URL is inlined at build time; next.config.mjs fails the
+# build if it is missing/localhost.
+export NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL:-https://${API_HOST}/api/v1}"
 
-# 10. Install systemd service
-echo "[10/14] Installing systemd service..."
-cp /tmp/eventflow-deploy/deploy/systemd/eventflow.service /etc/systemd/system/
+if ! command -v node >/dev/null 2>&1; then
+    echo "ERROR: node not found. Install Node.js 20+ first, e.g.:" >&2
+    echo "  curl -fsSL https://deb.nodesource.com/setup_20.x | sudo bash - && apt-get install -y nodejs" >&2
+    exit 1
+fi
+NODE_MAJOR=$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)
+if [ "${NODE_MAJOR}" -lt 20 ]; then
+    echo "ERROR: Node $(node -v) is too old — Next.js 16 requires Node >= 20" >&2
+    exit 1
+fi
+
+cd "${REPO_DIR}/frontend"
+npm ci --silent
+npm run build
+if [ ! -f ".next/BUILD_ID" ]; then
+    echo "ERROR: frontend build produced no .next/BUILD_ID" >&2
+    exit 1
+fi
+echo "  Frontend built (.next/BUILD_ID=$(cat .next/BUILD_ID))"
+
+# 10. Install systemd services
+echo "[10/14] Installing systemd services..."
+cp "${REPO_DIR}/deploy/systemd/eventflow.service" /etc/systemd/system/
+cp "${REPO_DIR}/deploy/systemd/eventflow-frontend.service" /etc/systemd/system/
 systemctl daemon-reload
-systemctl enable eventflow
+systemctl enable eventflow eventflow-frontend
 
-# 11. Configure Nginx
+# 11. Configure Nginx (rendered from the domain template)
 echo "[11/14] Configuring Nginx..."
-cp /tmp/eventflow-deploy/deploy/nginx/eventflow.conf /etc/nginx/sites-available/eventflow
+bash "${REPO_DIR}/deploy/scripts/render_nginx_config.sh" \
+    "${API_HOST}" "${APP_HOST}" "${MEDIA_HOST}" "${CERT_NAME}" \
+    -o /etc/nginx/sites-available/eventflow
 ln -sf /etc/nginx/sites-available/eventflow /etc/nginx/sites-enabled/eventflow
 rm -f /etc/nginx/sites-enabled/default
 if nginx -t 2>&1; then
@@ -128,11 +172,16 @@ else
     exit 1
 fi
 
-# 12. Install cron jobs
+# 12. Install cron jobs + backup scripts
 echo "[12/14] Installing cron jobs..."
-cp /tmp/eventflow-deploy/deploy/scripts/crontab.txt /tmp/crontab_eventflow.txt
+cp "${REPO_DIR}/deploy/scripts/crontab.txt" /tmp/crontab_eventflow.txt
 sudo -u "${DEPLOY_USER}" crontab /tmp/crontab_eventflow.txt
 rm /tmp/crontab_eventflow.txt
+# The crontab calls ~/scripts/backup.sh — install the helpers alongside
+install -m 750 -o "${DEPLOY_USER}" -g "${DEPLOY_USER}" \
+    "${REPO_DIR}/deploy/scripts/backup.sh" "${DEPLOY_DIR}/scripts/backup.sh"
+install -m 750 -o "${DEPLOY_USER}" -g "${DEPLOY_USER}" \
+    "${REPO_DIR}/deploy/scripts/restore.sh" "${DEPLOY_DIR}/scripts/restore.sh"
 
 # 13. Set proper permissions
 echo "[13/14] Setting permissions..."
@@ -147,15 +196,24 @@ echo "[14/14] Starting services..."
 systemctl start "${REDIS_SERVICE}" && systemctl enable "${REDIS_SERVICE}"
 systemctl start "${MYSQL_SERVICE}" && systemctl enable "${MYSQL_SERVICE}"
 systemctl restart eventflow
+systemctl restart eventflow-frontend
 
 # Verify services
 echo ""
 echo "Verifying services..."
 if systemctl is-active --quiet eventflow; then
-    echo "  EventFlow: running"
+    echo "  EventFlow API: running"
 else
-    echo "  ERROR: EventFlow failed to start!" >&2
+    echo "  ERROR: EventFlow API failed to start!" >&2
     systemctl status eventflow --no-pager || true
+    exit 1
+fi
+
+if systemctl is-active --quiet eventflow-frontend; then
+    echo "  EventFlow Frontend: running"
+else
+    echo "  ERROR: EventFlow frontend failed to start!" >&2
+    systemctl status eventflow-frontend --no-pager || true
     exit 1
 fi
 
@@ -181,11 +239,13 @@ fi
 echo ""
 echo "=== TLS Certificate Setup ==="
 echo "Run the following to set up HTTPS:"
-echo "  certbot --nginx -d app.eventflow.com -d api.eventflow.com -d media.eventflow.com"
+echo "  certbot --nginx -d ${APP_HOST} -d ${API_HOST} -d ${MEDIA_HOST}"
 echo ""
 echo "=== Deployment Complete ==="
-echo "Backend: https://api.eventflow.com"
-echo "Frontend: https://app.eventflow.com"
-echo "Media: https://media.eventflow.com"
+echo "Backend: https://${API_HOST}"
+echo "Frontend: https://${APP_HOST}"
+echo "Media: https://${MEDIA_HOST}"
 echo ""
 echo "IMPORTANT: Review ${BACKEND_DIR}/.env and update database credentials!"
+echo "Note: set NEXT_PUBLIC_API_URL in ${BACKEND_DIR}/.env (or"
+echo "frontend/.env.production) to match https://${API_HOST}/api/v1 if you change domains."

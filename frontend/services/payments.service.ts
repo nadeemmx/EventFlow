@@ -29,12 +29,15 @@ export const paymentsService = {
   },
 
   create: async (data: PaymentFormData) => {
-    const res = await apiClient.post<ApiResponse<Payment>>("/payments/", data);
+    const { booking_id, ...rest } = data;
+    const res = await apiClient.post<ApiResponse<Payment>>("/payments/", { ...rest, booking: booking_id });
     return res.data;
   },
 
   update: async (id: number, data: Partial<PaymentFormData>) => {
-    const res = await apiClient.patch<ApiResponse<Payment>>(`/payments/${id}/`, data);
+    const { booking_id, ...rest } = data;
+    const payload = booking_id !== undefined ? { ...rest, booking: booking_id } : rest;
+    const res = await apiClient.patch<ApiResponse<Payment>>(`/payments/${id}/`, payload);
     return res.data;
   },
 

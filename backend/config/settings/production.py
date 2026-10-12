@@ -16,6 +16,14 @@ ALLOWED_HOSTS = config(
     default=".eventflow.com,api.eventflow.com",
     cast=Csv(),
 )
+# Loopback is always allowed so local health checks and nginx->gunicorn
+# requests with Host: 127.0.0.1 (curl http://127.0.0.1:8000/live/) never get
+# DisallowedHost 400s. Public hosts still come exclusively from the env var,
+# so this does not widen exposure beyond the server itself.
+for _loopback in ("127.0.0.1", "localhost", "::1"):
+    if _loopback not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS = [*ALLOWED_HOSTS, _loopback]
+
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # CSRF trusted origins for the frontend domain
@@ -55,16 +63,24 @@ DATABASES["default"]["CONN_MAX_AGE"] = 600
 
 # Security hardening
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-SESSION_COOKIE_SECURE = True
+# Secure cookies are on by default. For the temporary HTTP/IP deployment
+# (deploy_vps.sh, no TLS yet) browsers would drop Secure cookies, breaking
+# Django admin logins — set SESSION_COOKIE_SECURE=false and
+# CSRF_COOKIE_SECURE=false in that environment's .env explicitly. API auth
+# (JWT Bearer) does not depend on cookies and is unaffected either way.
+SESSION_COOKIE_SECURE = config("SESSION_COOKIE_SECURE", default=True, cast=bool)
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
-CSRF_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = config("CSRF_COOKIE_SECURE", default=True, cast=bool)
 CSRF_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SAMESITE = "Lax"
 SECURE_SSL_REDIRECT = False  # handled by web server
 SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-SECURE_HSTS_PRELOAD = True
+# preload is deliberately off: entries are effectively irreversible and
+# require EVERY subdomain to be HTTPS-ready before submission. Opt in later
+# with SECURE_HSTS_PRELOAD=true once that is verified.
+SECURE_HSTS_PRELOAD = config("SECURE_HSTS_PRELOAD", default=False, cast=bool)
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_BROWSER_XSS_FILTER = True
 X_FRAME_OPTIONS = "DENY"

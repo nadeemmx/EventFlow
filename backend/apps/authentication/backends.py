@@ -7,17 +7,14 @@ logger = logging.getLogger("authentication")
 
 class EmailOrMobileBackend(ModelBackend):
     def authenticate(self, request, email=None, password=None, **kwargs):
+        if email is None:
+            email = kwargs.get("username")
         user = None
 
-        # Try by email
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            # Try by mobile
-            try:
-                user = User.objects.get(mobile=email)
-            except User.DoesNotExist:
-                return None
+        if email:
+            user = User.objects.filter(email=email).first()
+            if user is None:
+                user = User.objects.filter(mobile=email).first()
 
         if user is None:
             return None

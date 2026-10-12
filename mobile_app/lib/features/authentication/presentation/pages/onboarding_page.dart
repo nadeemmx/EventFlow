@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/services.dart';
 import 'package:eventflow_app/injector.dart';
+import 'package:eventflow_app/core/services/notification_service.dart';
 import 'package:eventflow_app/core/theme/app_colors.dart';
 import 'package:eventflow_app/core/theme/design_system.dart';
 import 'package:eventflow_app/core/storage/storage_service.dart';
@@ -57,6 +58,13 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
   void _completeOnboarding() async {
     await sl<StorageService>().setOnboardingCompleted();
+    // First-run opt-in point for the push permission prompt: unlike cold
+    // start, the user is looking at the UI here.
+    try {
+      await sl<NotificationService>().requestPermission();
+    } catch (_) {
+      // Permission prompt is best effort (e.g. Firebase not configured).
+    }
     if (mounted) {
       context.go('/login');
     }

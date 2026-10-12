@@ -14,6 +14,10 @@ import {
   Settings,
   LogOut,
   X,
+  Building,
+  UserCog,
+  DollarSign,
+  Shield,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -24,7 +28,14 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Sheet, SheetContent, SheetClose } from "@/components/ui/sheet"
 import { useAuth } from "@/stores/auth-context"
 
-const navItems = [
+interface NavItem {
+  label: string
+  href: string
+  icon: React.ElementType
+  roles?: string[]
+}
+
+const venueOwnerNavItems: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Bookings", href: "/bookings", icon: CalendarCheck },
   { label: "Customers", href: "/customers", icon: Users },
@@ -36,6 +47,16 @@ const navItems = [
   { label: "Settings", href: "/settings", icon: Settings },
 ] as const
 
+const platformAdminNavItems: NavItem[] = [
+  { label: "Platform Overview", href: "/admin", icon: LayoutDashboard },
+  { label: "Venue Owners", href: "/admin/tenants", icon: Users },
+  { label: "All Venues", href: "/admin/venues", icon: Building },
+  { label: "Subscription Plans", href: "/subscriptions", icon: DollarSign },
+  { label: "Platform Reports", href: "/reports", icon: BarChart3 },
+  { label: "Audit Logs", href: "/audit-logs", icon: FileText },
+  { label: "Platform Settings", href: "/settings", icon: Shield },
+] as const
+
 interface AppSidebarProps {
   open?: boolean
   onClose?: () => void
@@ -44,6 +65,9 @@ interface AppSidebarProps {
 function SidebarContent({ pathname, onLinkClick }: { pathname: string; onLinkClick?: () => void }) {
   const { user, logout } = useAuth()
   const router = useRouter()
+
+  const isPlatformAdmin = user?.role === "SUPER_ADMIN"
+  const navItems = isPlatformAdmin ? platformAdminNavItems : venueOwnerNavItems
 
   const initials = user?.full_name
     ? user.full_name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
@@ -57,10 +81,20 @@ function SidebarContent({ pathname, onLinkClick }: { pathname: string; onLinkCli
             EF
           </div>
           <span className="font-semibold text-lg tracking-tight">EventFlow</span>
+          {isPlatformAdmin && (
+            <span className="text-xs font-medium px-2 py-0.5 rounded bg-amber-500/10 text-amber-700">
+              Platform Admin
+            </span>
+          )}
         </div>
         {onLinkClick && (
           <SheetClose asChild>
-            <Button variant="ghost" size="icon" className="md:hidden cursor-pointer">
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Close"
+              className="md:hidden cursor-pointer"
+            >
               <X className="h-5 w-5" />
             </Button>
           </SheetClose>
@@ -70,7 +104,7 @@ function SidebarContent({ pathname, onLinkClick }: { pathname: string; onLinkCli
       <Separator className="bg-[hsl(var(--sidebar-border))]" />
 
       <ScrollArea className="flex-1 px-3 py-4">
-        <nav className="flex flex-col gap-1">
+        <nav aria-label="Sidebar" className="flex flex-col gap-1">
           {navItems.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
             const Icon = item.icon
@@ -86,7 +120,7 @@ function SidebarContent({ pathname, onLinkClick }: { pathname: string; onLinkCli
                     : "text-[hsl(var(--sidebar-foreground))] hover:bg-[hsl(var(--sidebar-accent))] hover:text-[hsl(var(--sidebar-accent-foreground))]"
                 )}
               >
-                <Icon className="h-4 w-4 shrink-0" />
+                <Icon aria-hidden="true" focusable="false" className="h-4 w-4 shrink-0" />
                 <span>{item.label}</span>
               </Link>
             )
@@ -114,6 +148,7 @@ function SidebarContent({ pathname, onLinkClick }: { pathname: string; onLinkCli
             size="icon"
             className="text-[hsl(var(--sidebar-foreground))] hover:text-[hsl(var(--sidebar-accent-foreground))] hover:bg-[hsl(var(--sidebar-accent))] cursor-pointer shrink-0"
             title="Logout"
+            aria-label="Logout"
             onClick={async () => {
               await logout()
               router.push("/login")

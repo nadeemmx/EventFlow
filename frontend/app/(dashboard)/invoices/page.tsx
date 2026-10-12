@@ -117,17 +117,19 @@ export default function InvoicesPage() {
           <Button
             variant="ghost"
             size="sm"
+            aria-label="View invoice"
             className="cursor-pointer"
             onClick={(e) => {
               e.stopPropagation()
               router.push(`/invoices/${item.id}`)
             }}
           >
-            <Eye className="h-4 w-4" />
+            <Eye aria-hidden="true" focusable="false" className="h-4 w-4" />
           </Button>
           <Button
             variant="ghost"
             size="sm"
+            aria-label="Email invoice"
             className="cursor-pointer"
             disabled={emailingId === item.id}
             onClick={(e) => {
@@ -135,29 +137,31 @@ export default function InvoicesPage() {
               handleEmailInvoice(item.id)
             }}
           >
-            <Mail className="h-4 w-4" />
+            <Mail aria-hidden="true" focusable="false" className="h-4 w-4" />
           </Button>
           <Button
             variant="ghost"
             size="sm"
+            aria-label="Download invoice PDF"
             className="cursor-pointer"
             onClick={(e) => {
               e.stopPropagation()
               handleDownloadPdf(item.id)
             }}
           >
-            <Download className="h-4 w-4" />
+            <Download aria-hidden="true" focusable="false" className="h-4 w-4" />
           </Button>
           <Button
             variant="ghost"
             size="sm"
+            aria-label="Delete invoice"
             className="cursor-pointer text-destructive"
             onClick={(e) => {
               e.stopPropagation()
               setDeleteId(item.id)
             }}
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash2 aria-hidden="true" focusable="false" className="h-4 w-4" />
           </Button>
         </div>
       ),

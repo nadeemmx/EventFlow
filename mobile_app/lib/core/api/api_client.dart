@@ -2,16 +2,22 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:eventflow_app/core/api/api_endpoints.dart';
+import 'package:eventflow_app/core/api/tenant_interceptor.dart';
+import 'package:eventflow_app/core/services/tenant_context_service.dart';
 import 'package:eventflow_app/core/services/token_service.dart';
 
 class ApiClient {
   late final Dio _dio;
   final TokenService _tokenService;
+  final TenantContextService? _tenantContext;
   final StreamController<void> _authFailureController = StreamController<void>.broadcast();
 
   Stream<void> get authFailure => _authFailureController.stream;
 
-  ApiClient({required this._tokenService}) {
+  ApiClient({
+    required this._tokenService,
+    this._tenantContext,
+  }) {
     _dio = Dio(
       BaseOptions(
         baseUrl: ApiEndpoints.baseUrl,
@@ -24,7 +30,11 @@ class ApiClient {
       ),
     );
 
+    final tenantContext = _tenantContext;
     _dio.interceptors.addAll([
+      // Registered first so the tenant is attached before the request is
+      // dispatched; both interceptors mutate the request independently.
+      if (tenantContext != null) TenantInterceptor(tenantContext),
       _AuthInterceptor(_tokenService, _authFailureController),
       _ErrorInterceptor(),
       if (kDebugMode) LogInterceptor(

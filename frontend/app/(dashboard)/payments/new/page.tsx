@@ -96,16 +96,19 @@ export default function NewPaymentPage() {
                         <Button
                           variant="outline"
                           role="combobox"
+                          aria-expanded={bookingOpen}
+                          aria-controls="payment-booking-listbox"
+                          aria-autocomplete="list"
                           className={cn("w-full justify-between cursor-pointer", !field.value && "text-muted-foreground")}
                         >
                           {field.value && selectedBooking
                             ? selectedBooking.booking_number
                             : "Search booking..."}
-                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          <ChevronsUpDown aria-hidden="true" focusable="false" className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
-                    <PopoverContent className="w-full p-0">
+                    <PopoverContent id="payment-booking-listbox" className="w-full p-0">
                       <Command>
                         <CommandInput
                           placeholder="Search by booking number..."
@@ -126,6 +129,8 @@ export default function NewPaymentPage() {
                                 className="cursor-pointer"
                               >
                                 <Check
+                                  aria-hidden="true"
+                                  focusable="false"
                                   className={cn(
                                     "mr-2 h-4 w-4",
                                     booking.id === field.value ? "opacity-100" : "opacity-0"

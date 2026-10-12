@@ -106,14 +106,14 @@ export default function StaffPage() {
         const member = item as unknown as StaffMember
         return (
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" className="cursor-pointer" onClick={(e) => { e.stopPropagation(); router.push(`/staff/${member.id}`) }}>
-              <Eye className="h-4 w-4" />
+            <Button variant="ghost" size="icon" aria-label="View staff member" className="cursor-pointer" onClick={(e) => { e.stopPropagation(); router.push(`/staff/${member.id}`) }}>
+              <Eye aria-hidden="true" focusable="false" className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" className="cursor-pointer" onClick={(e) => { e.stopPropagation(); router.push(`/staff/${member.id}`) }}>
-              <Edit className="h-4 w-4" />
+            <Button variant="ghost" size="icon" aria-label="Edit staff member" className="cursor-pointer" onClick={(e) => { e.stopPropagation(); router.push(`/staff/${member.id}`) }}>
+              <Edit aria-hidden="true" focusable="false" className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" className="cursor-pointer text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); setDeleteId(member.id) }}>
-              <Trash2 className="h-4 w-4" />
+            <Button variant="ghost" size="icon" aria-label="Delete staff member" className="cursor-pointer text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); setDeleteId(member.id) }}>
+              <Trash2 aria-hidden="true" focusable="false" className="h-4 w-4" />
             </Button>
           </div>
         )

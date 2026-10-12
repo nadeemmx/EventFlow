@@ -150,6 +150,13 @@ export default function CalendarPage() {
                 return (
                   <div
                     key={idx}
+                    role={cell.dateStr ? "button" : undefined}
+                    tabIndex={cell.dateStr ? 0 : undefined}
+                    aria-label={
+                      cell.dateStr
+                        ? `View bookings for ${formatDate(cell.dateStr)}`
+                        : undefined
+                    }
                     className={cn(
                       "min-h-[100px] p-2 border-b border-r last:border-r-0 relative transition-colors",
                       cell.isCurrentMonth ? "bg-background" : "bg-muted/30",
@@ -157,6 +164,13 @@ export default function CalendarPage() {
                       hasEvents && "cursor-pointer hover:bg-accent/50"
                     )}
                     onClick={() => cell.dateStr && handleDayClick(cell.dateStr)}
+                    onKeyDown={(e) => {
+                      if (e.target !== e.currentTarget || !cell.dateStr) return
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault()
+                        handleDayClick(cell.dateStr)
+                      }
+                    }}
                   >
                     {cell.day > 0 && (
                       <>
@@ -216,10 +230,21 @@ export default function CalendarPage() {
               {selectedDay?.bookings.map((b) => (
                 <div
                   key={b.id}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`View booking ${b.booking_number}`}
                   className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 cursor-pointer transition-colors"
                   onClick={() => {
                     setSelectedDay(null)
                     router.push(`/bookings/${b.id}`)
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.target !== e.currentTarget) return
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault()
+                      setSelectedDay(null)
+                      router.push(`/bookings/${b.id}`)
+                    }
                   }}
                 >
                   <div className="min-w-0 flex-1">
