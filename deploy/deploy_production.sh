@@ -129,7 +129,30 @@ python manage.py check --deploy 2>&1 || log "WARNING: check --deploy reported wa
 # 5. Backend — run migrations
 # ----------------------------------------------------------
 log "[5/11] Running migrations..."
+
+# Pre-migration backup when the cron backup helper is installed. A failed
+# backup is loud but non-fatal (mysqldump may be down while the app still
+# deploys); it never rolls back or touches data.
+BACKUP_HELPER="${DEPLOY_DIR}/scripts/backup.sh"
+if [ -f "${BACKUP_HELPER}" ]; then
+    log "  Pre-migration backup: ${BACKUP_HELPER}"
+    if ! bash "${BACKUP_HELPER}"; then
+        log "  WARNING: pre-migration backup FAILED — continuing (see ${BACKUP_DIR:-/home/eventflow/backups})"
+    fi
+else
+    log "  No backup helper at ${BACKUP_HELPER} — skipping pre-migration backup"
+fi
+
 python manage.py migrate --noinput
+
+# Prove the database is reachable and reports no unapplied migrations.
+# (migrate --noinput would already have failed on a broken DB; this guards
+# against partial application, e.g. a skipped app.)
+if python manage.py migrate --check; then
+    log "  Migrations verified: database reachable, nothing unapplied"
+else
+    fail "migrate --check reports unapplied migrations — refusing to continue"
+fi
 
 # ----------------------------------------------------------
 # 6. Backend — collect static files
@@ -151,21 +174,28 @@ log "[7/11] Building frontend..."
 cd "${REPO_DIR}/frontend"
 
 # NEXT_PUBLIC_API_URL is inlined at build time and the build fails without
-# it (next.config.mjs). Source of truth: frontend/.env.production, with
-# backend .env as a fallback so a single deploy env can drive both.
+# it (next.config.mjs). Source of truth, in order:
+#   1. the environment (CI passes the GitHub Actions repository variable)
+#   2. frontend/.env.production
+#   3. backend .env, so a single deploy env can drive both
 FRONTEND_ENV_FILE="${REPO_DIR}/frontend/.env.production"
-NEXT_API_URL=""
-if [ -f "${FRONTEND_ENV_FILE}" ]; then
-    NEXT_API_URL=$(sed -n 's/^NEXT_PUBLIC_API_URL=//p' "${FRONTEND_ENV_FILE}" | tail -1)
+NEXT_API_URL="${NEXT_PUBLIC_API_URL:-}"
+NEXT_API_SOURCE="environment"
+if [ -z "${NEXT_API_URL}" ]; then
+    NEXT_API_SOURCE="${FRONTEND_ENV_FILE}"
+    if [ -f "${FRONTEND_ENV_FILE}" ]; then
+        NEXT_API_URL=$(sed -n 's/^NEXT_PUBLIC_API_URL=//p' "${FRONTEND_ENV_FILE}" | tail -1)
+    fi
 fi
 if [ -z "${NEXT_API_URL}" ] && [ -f "${BACKEND_DIR}/.env" ]; then
+    NEXT_API_SOURCE="${BACKEND_DIR}/.env"
     NEXT_API_URL=$(sed -n 's/^NEXT_PUBLIC_API_URL=//p' "${BACKEND_DIR}/.env" | tail -1)
 fi
 if [ -z "${NEXT_API_URL}" ]; then
-    fail "NEXT_PUBLIC_API_URL is not set. Create ${FRONTEND_ENV_FILE} (copy frontend/.env.production.example) or add NEXT_PUBLIC_API_URL=<https://api.YOUR-DOMAIN/api/v1> to ${BACKEND_DIR}/.env"
+    fail "NEXT_PUBLIC_API_URL is not set. Create ${FRONTEND_ENV_FILE} (copy frontend/.env.production.example), add NEXT_PUBLIC_API_URL=<https://api.YOUR-DOMAIN/api/v1> to ${BACKEND_DIR}/.env, or export it for this run (CI passes the repository variable)."
 fi
 export NEXT_PUBLIC_API_URL="${NEXT_API_URL}"
-log "  NEXT_PUBLIC_API_URL=${NEXT_API_URL}"
+log "  NEXT_PUBLIC_API_URL=${NEXT_API_URL} (from ${NEXT_API_SOURCE})"
 
 npm ci --silent
 npm run build
@@ -174,6 +204,14 @@ if [ -f ".next/BUILD_ID" ]; then
     log "  Frontend build OK (.next/BUILD_ID=$(cat .next/BUILD_ID))"
 else
     fail "Frontend build produced no .next/BUILD_ID — next build did not complete"
+fi
+
+# Verify the build-time variable actually landed in the shipped bundle, not
+# just in the build environment.
+if grep -RFq -- "${NEXT_API_URL}" .next; then
+    log "  API URL confirmed inlined in the bundle"
+else
+    fail "NEXT_PUBLIC_API_URL (${NEXT_API_URL}) was not inlined into .next/ — the bundle would ship a wrong API origin"
 fi
 
 # ----------------------------------------------------------
@@ -217,25 +255,23 @@ restart_service eventflow.service
 restart_service eventflow-frontend.service
 
 # ----------------------------------------------------------
-# 9. Reload Nginx (safe — only reload, never recreate config)
+# 9. Reload Nginx (validate first — never reload a broken config)
 # ----------------------------------------------------------
 log "[9/11] Reloading Nginx..."
 if sudo -n nginx -t 2>&1; then
     sudo -n systemctl reload nginx
     log "  Nginx reloaded"
 else
-    log "  WARNING: Nginx config test failed — skipping reload"
+    fail "nginx -t failed — NOT reloading. Fix /etc/nginx/sites-available/eventflow (validate with 'sudo nginx -t') and re-run this script. The running nginx keeps its last good configuration."
 fi
 
 # The frontend is proxied to 127.0.0.1:3000 now. If the installed nginx
 # config still serves static files from public_html, the app will 404 even
-# though this script succeeded — detect and say so loudly.
+# though this script succeeded — treat that as a deployment failure, not a
+# warning, because users would get the wrong (stale) site.
 if [ -f /etc/nginx/sites-enabled/eventflow ] || [ -f /etc/nginx/sites-available/eventflow ]; then
     if ! sudo -n grep -q "eventflow_frontend" /etc/nginx/sites-available/eventflow 2>/dev/null; then
-        log "  WARNING: installed nginx config has no 'eventflow_frontend' upstream."
-        log "          It probably still serves static public_html (old model)."
-        log "          Render the current template with:"
-        log "            deploy/scripts/render_nginx_config.sh <API_HOST> <APP_HOST> <MEDIA_HOST>"
+        fail "installed nginx config has no 'eventflow_frontend' upstream — it still serves static public_html (old model). Render the current template with: deploy/scripts/render_nginx_config.sh <API_HOST> <APP_HOST> <MEDIA_HOST> (or copy deploy/nginx/eventflow-ip.conf for the IP deployment) and re-run."
     fi
 fi
 

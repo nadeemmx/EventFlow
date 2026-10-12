@@ -2,31 +2,33 @@ name: CI
 
 on:
   pull_request:
-    branches: [master]
   push:
     branches: [master]
+  workflow_dispatch:
 
-# Least privilege: the CI jobs only need to read the repository.
+# Least privilege: every job only needs to read the repository.
 permissions:
   contents: read
 
+# One run per ref; a newer push to the same ref cancels the older run.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   backend:
     name: Backend (Django)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: backend
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -35,24 +37,29 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements/development.txt
 
-      - name: Django check
+      # Test settings (backend/pytest.ini → config.settings.test) use
+      # SQLite in-memory + LocMemCache, so no MySQL/Redis service is needed
+      # here; production uses MariaDB/Redis on the VPS (smoke_test.sh and
+      # /ready/ cover those on the live server).
+      - name: Django system check
         run: DJANGO_SETTINGS_MODULE=config.settings.test python manage.py check
 
-      - name: Run tests
-        run: pytest tests/ -v --tb=short
+      - name: Run test suite
+        run: pytest tests/ -q --tb=short
 
   frontend:
     name: Frontend (Next.js)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: frontend
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "20"
           cache: npm
@@ -61,25 +68,44 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # next.config.mjs sets typescript.ignoreBuildErrors=true, so the build
+      # alone would not surface type errors — run tsc explicitly.
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Run tests
+        run: npm test
+
       - name: Production build
-        run: npm run build
         env:
           # next.config.mjs fails the build without NEXT_PUBLIC_API_URL.
-          # CI only needs a syntactically valid URL to exercise the build;
-          # the real value is set on the VPS at deploy time (never deployed
-          # from CI artifacts). Set the repo variable NEXT_PUBLIC_API_URL to
-          # point CI at a real/staging API if you want live previews.
-          NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL || 'https://api.ci-placeholder.example/api/v1' }}
+          # The value is inlined into the client bundle (never deployed from
+          # CI as an artifact — the VPS rebuilds the frontend at deploy time).
+          # Override with the repository variable NEXT_PUBLIC_API_URL.
+          NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL || 'http://194.77.89.95/api/v1' }}
+        run: npm run build
+
+      - name: Verify build-time variable was inlined
+        env:
+          EXPECTED_API_URL: ${{ vars.NEXT_PUBLIC_API_URL || 'http://194.77.89.95/api/v1' }}
+        run: |
+          set -euo pipefail
+          if ! grep -RFq -- "$EXPECTED_API_URL" .next; then
+            echo "::error::NEXT_PUBLIC_API_URL ($EXPECTED_API_URL) not found in .next/ — build-time inlining failed"
+            exit 1
+          fi
+          echo "OK: $EXPECTED_API_URL is present in the production bundle"
 
   mobile:
     name: Mobile (Flutter)
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     defaults:
       run:
         working-directory: mobile_app
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -96,3 +122,114 @@ jobs:
 
       - name: Run tests
         run: flutter test
+
+  deploy-scripts:
+    name: Deploy scripts & configuration
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Shell syntax check (bash -n)
+        run: |
+          set -euo pipefail
+          mapfile -t scripts < <(git ls-files '*.sh')
+          if [ "${#scripts[@]}" -eq 0 ]; then
+            echo "::error::no shell scripts found in the repository"
+            exit 1
+          fi
+          for s in "${scripts[@]}"; do
+            bash -n "$s"
+          done
+          echo "OK: bash -n on ${#scripts[@]} scripts"
+
+      - name: ShellCheck (errors)
+        run: |
+          set -euo pipefail
+          shellcheck --version
+          # -S error: hard defects only (warnings are reviewed locally).
+          # shellcheck ships with the GitHub-hosted ubuntu runners.
+          mapfile -t scripts < <(git ls-files '*.sh')
+          shellcheck -S error -x "${scripts[@]}"
+          echo "OK: shellcheck found no errors"
+
+      - name: actionlint (workflow syntax, expressions, step shells)
+        env:
+          ACTIONLINT_VERSION: "1.7.7"
+          ACTIONLINT_SHA256: "023070a287cd8cccd71515fedc843f1985bf96c436b7effaecce67290e7e0757"
+        run: |
+          set -euo pipefail
+          curl -fsSL -o /tmp/actionlint.tgz \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          echo "${ACTIONLINT_SHA256}  /tmp/actionlint.tgz" | sha256sum -c -
+          tar -xzf /tmp/actionlint.tgz -C /tmp actionlint
+          /tmp/actionlint -color
+          echo "OK: actionlint passed"
+
+      - name: Nginx configuration test (IP mode)
+        run: |
+          set -euo pipefail
+          if ! command -v nginx >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq nginx
+          fi
+          # The package auto-starts nginx, which would hold :80/:443 and make
+          # the bind test inside `nginx -t` fail with EADDRINUSE.
+          sudo systemctl stop nginx 2>/dev/null || sudo nginx -s stop 2>/dev/null || true
+          # eventflow-ip.conf is a complete http-level config (server_tokens,
+          # upstreams, limit_req_zone, server blocks), so it can be included
+          # in a minimal main config for `nginx -t`.
+          WORKDIR=$(mktemp -d)
+          {
+            echo "events { worker_connections 64; }"
+            echo "http {"
+            echo "    include ${GITHUB_WORKSPACE}/deploy/nginx/eventflow-ip.conf;"
+            echo "}"
+          } > "${WORKDIR}/nginx.conf"
+          sudo nginx -t -c "${WORKDIR}/nginx.conf"
+
+      - name: Nginx domain template renders and validates
+        run: |
+          set -euo pipefail
+          if ! command -v nginx >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq nginx
+          fi
+          # Same as the IP step: free :80/:443 before the bind test.
+          sudo systemctl stop nginx 2>/dev/null || sudo nginx -s stop 2>/dev/null || true
+          WORKDIR=$(mktemp -d)
+          out="${WORKDIR}/eventflow.conf"
+          deploy/scripts/render_nginx_config.sh \
+            api.ci.example app.ci.example media.ci.example ci.example -o "${out}"
+          grep -q "eventflow_backend" "${out}"
+          grep -q "eventflow_frontend" "${out}"
+          if grep -Eq '@[A-Z_][A-Z_]*@' "${out}"; then
+            echo "::error::rendered config still contains placeholders"
+            exit 1
+          fi
+          # Real `nginx -t` on the rendered config. Only the certificate
+          # paths are swapped to a throwaway self-signed pair (the template
+          # hardcodes /etc/letsencrypt/...); hosts, ports and all directives
+          # are validated as-is. Upstreams use 127.0.0.1, so no DNS needed.
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj "/CN=ci.local" \
+            -keyout "${WORKDIR}/privkey.pem" -out "${WORKDIR}/fullchain.pem" >/dev/null 2>&1
+          sed -i "s|/etc/letsencrypt/live/ci.example/|${WORKDIR}/|g" "${out}"
+          {
+            echo "events { worker_connections 64; }"
+            echo "http {"
+            echo "    include ${out};"
+            echo "}"
+          } > "${WORKDIR}/nginx.conf"
+          sudo nginx -t -c "${WORKDIR}/nginx.conf"
+          echo "OK: rendered domain template passed nginx -t"
+
+      - name: systemd units are structurally valid
+        run: |
+          set -euo pipefail
+          for unit in deploy/systemd/*.service; do
+            grep -q '^\[Unit\]'    "${unit}" || { echo "::error::${unit}: missing [Unit]";   exit 1; }
+            grep -q '^\[Service\]' "${unit}" || { echo "::error::${unit}: missing [Service]"; exit 1; }
+            grep -q '^ExecStart='  "${unit}" || { echo "::error::${unit}: missing ExecStart"; exit 1; }
+            echo "OK: ${unit}"
+          done

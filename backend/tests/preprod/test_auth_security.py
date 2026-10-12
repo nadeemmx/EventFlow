@@ -272,7 +272,12 @@ class CsrfAndHeaderTests(TokenSecurityTestBase):
 
         The module itself cannot be imported here - it deliberately raises
         without DJANGO_SECRET_KEY/REDIS_URL/ENCRYPTION_KEY (see the test
-        above), so the file is inspected as source instead."""
+        above), so the file is inspected as source instead.
+
+        Secure-cookie flags are env-gated for the temporary HTTP/IP
+        deployment (deploy_vps.sh sets them false explicitly), so the guard
+        enforces the pattern with default=True - it still fails if the
+        default is flipped to False or the directive is removed."""
         from pathlib import Path
         import config.settings
 
@@ -282,8 +287,8 @@ class CsrfAndHeaderTests(TokenSecurityTestBase):
             "SECURE_HSTS_SECONDS = 31536000",
             "SECURE_CONTENT_TYPE_NOSNIFF = True",
             "X_FRAME_OPTIONS = \"DENY\"",
-            "SESSION_COOKIE_SECURE = True",
-            "CSRF_COOKIE_SECURE = True",
+            "SESSION_COOKIE_SECURE = config(\"SESSION_COOKIE_SECURE\", default=True",
+            "CSRF_COOKIE_SECURE = config(\"CSRF_COOKIE_SECURE\", default=True",
             "SESSION_COOKIE_HTTPONLY = True",
         ):
             self.assertIn(directive, source, f"missing hardening: {directive}")

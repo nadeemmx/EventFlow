@@ -1,12 +1,20 @@
 name: Deploy
 
 on:
+  # Deploy only after a CI run that was triggered by a push to master.
   workflow_run:
     workflows: ["CI"]
     types: [completed]
     branches: [master]
+  # Manual escape hatch (explicit human decision; no CI gate).
   workflow_dispatch:
 
+# Least privilege: everything privileged happens over SSH with the deploy key.
+permissions:
+  contents: read
+
+# Deployment lock: only one production deployment at a time. Never cancel a
+# deployment that is already running — queue behind it instead.
 concurrency:
   group: eventflow-production
   cancel-in-progress: false
@@ -15,56 +23,228 @@ jobs:
   deploy:
     name: Deploy to Production
     runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: production
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
-    environment: production
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push')
+
+    env:
+      SSH_HOST: ${{ secrets.VPS_HOST }}
+      SSH_USER: ${{ secrets.VPS_USER }}
+      SSH_PORT: ${{ secrets.VPS_PORT || '22' }}
+      SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+      KNOWN_HOSTS: ${{ secrets.VPS_SSH_KNOWN_HOSTS }}
+      HOST_FINGERPRINT: ${{ secrets.VPS_SSH_FINGERPRINT }}
+      # Non-secret build input (inlined into the client bundle on the VPS).
+      NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
+      PUBLIC_BASE_URL: ${{ vars.PUBLIC_BASE_URL }}
+      DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
 
     steps:
-      - uses: actions/checkout@v4
+      # --------------------------------------------------------------
+      # 0. Fail clearly when required configuration is missing, instead
+      #    of letting SSH fail with an opaque error halfway through.
+      # --------------------------------------------------------------
+      - name: Validate configuration
+        run: |
+          set -euo pipefail
+          missing=()
+          [ -n "${SSH_HOST}" ]    || missing+=("secret VPS_HOST")
+          [ -n "${SSH_USER}" ]    || missing+=("secret VPS_USER")
+          [ -n "${SSH_KEY}" ]     || missing+=("secret VPS_SSH_KEY")
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "::error::Missing required GitHub configuration: ${missing[*]}. Add them under Settings → Secrets and variables → Actions, then re-run."
+            exit 1
+          fi
+          if ! printf '%s' "${SSH_PORT}" | grep -Eq '^[0-9]+$'; then
+            echo "::error::secret VPS_PORT must be numeric, got: ${SSH_PORT}"
+            exit 1
+          fi
+          if [ -z "${NEXT_PUBLIC_API_URL}" ]; then
+            echo "::warning::Repository variable NEXT_PUBLIC_API_URL is not set. The VPS will fall back to frontend/.env.production or the backend .env (deploy_production.sh fails if neither exists)."
+          elif ! printf '%s' "${NEXT_PUBLIC_API_URL}" | grep -Eq '^https?://[A-Za-z0-9.:-]+(/[A-Za-z0-9._~%+:-]*)*$'; then
+            echo "::error::variable NEXT_PUBLIC_API_URL must be an absolute http(s) URL, got: ${NEXT_PUBLIC_API_URL}"
+            exit 1
+          else
+            echo "NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}"
+          fi
+          echo "Target: ${SSH_USER}@${SSH_HOST}:${SSH_PORT} (commit ${DEPLOY_SHA})"
+          if [ -n "${KNOWN_HOSTS}" ]; then
+            echo "Host key pinning: VPS_SSH_KNOWN_HOSTS is set"
+          elif [ -n "${HOST_FINGERPRINT}" ]; then
+            echo "Host key pinning: VPS_SSH_FINGERPRINT is set"
+          else
+            echo "Host key pinning: none pinned yet (ssh-keyscan TOFU; a fingerprint notice is printed below)"
+          fi
 
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      # --------------------------------------------------------------
+      # SSH with host-key verification. Never uses StrictHostKeyChecking=no.
+      # Pinning order:
+      #   1. VPS_SSH_KNOWN_HOSTS secret (exact known_hosts entry) — best.
+      #   2. ssh-keyscan + VPS_SSH_FINGERPRINT secret — verified match.
+      #   3. ssh-keyscan only — TOFU; the fingerprint is printed as a notice
+      #      so the operator can pin it afterwards.
+      # --------------------------------------------------------------
       - name: Set up SSH
         run: |
+          set -euo pipefail
           mkdir -p ~/.ssh
-          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 700 ~/.ssh
+
+          # Private key (tolerates \n-escaped PEMs and stray CRLF).
+          if printf '%s' "${SSH_KEY}" | grep -q '\\n'; then
+            printf '%b\n' "${SSH_KEY}" | tr -d '\r' > ~/.ssh/deploy_key
+          else
+            printf '%s\n' "${SSH_KEY}" | tr -d '\r' > ~/.ssh/deploy_key
+          fi
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -p ${{ secrets.VPS_PORT || 22 }} ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+          if ! ssh-keygen -y -f ~/.ssh/deploy_key -P "" >/dev/null 2>&1; then
+            echo "::error::secret VPS_SSH_KEY is not a valid unencrypted private key (password-protected keys are not supported for unattended deploys)"
+            exit 1
+          fi
 
-      - name: Record commit
-        id: commit
-        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          : > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
 
+          if [ -n "${KNOWN_HOSTS}" ]; then
+            printf '%s\n' "${KNOWN_HOSTS}" >> ~/.ssh/known_hosts
+            echo "Using pinned known_hosts from VPS_SSH_KNOWN_HOSTS"
+            ssh-keygen -lf ~/.ssh/known_hosts | sed 's/^/  /'
+          else
+            scanned=$(mktemp)
+            for attempt in 1 2 3; do
+              if ssh-keyscan -T 15 -p "${SSH_PORT}" "${SSH_HOST}" > "${scanned}" 2>/dev/null && [ -s "${scanned}" ]; then
+                break
+              fi
+              echo "ssh-keyscan attempt ${attempt} failed; retrying in 5s..."
+              sleep 5
+            done
+            if [ ! -s "${scanned}" ]; then
+              echo "::error::Could not reach ${SSH_HOST}:${SSH_PORT} to obtain the SSH host key. Check VPS_HOST/VPS_PORT and the server firewall."
+              exit 1
+            fi
+            cat "${scanned}" >> ~/.ssh/known_hosts
+            fingerprint=$(ssh-keygen -lf "${scanned}" | head -1 | awk '{print $2}')
+            if [ -n "${HOST_FINGERPRINT}" ]; then
+              if ! ssh-keygen -lf "${scanned}" | grep -Fq "${HOST_FINGERPRINT}"; then
+                echo "::error::SSH host key fingerprint mismatch for ${SSH_HOST}:${SSH_PORT}. Expected: ${HOST_FINGERPRINT}. Got: ${fingerprint}. Refusing to connect."
+                exit 1
+              fi
+              echo "Host key fingerprint verified against VPS_SSH_FINGERPRINT"
+            else
+              echo "::notice title=Unpinned SSH host key::ssh-keyscan fetched ${fingerprint}. Pin it in the VPS_SSH_FINGERPRINT secret (or paste the entry into VPS_SSH_KNOWN_HOSTS) so future runs verify against it."
+            fi
+            rm -f "${scanned}"
+          fi
+
+      # --------------------------------------------------------------
+      # Deploy through the existing non-Docker VPS workflow:
+      # deploy_production.sh (git reset to origin/master, rsync backend,
+      # migrate, collectstatic, next build, systemd restart, nginx -t,
+      # health checks, rollback instructions on failure).
+      # --------------------------------------------------------------
       - name: Deploy backend and frontend
-        env:
-          SSH_KEY: ~/.ssh/deploy_key
-          SSH_PORT: ${{ secrets.VPS_PORT || 22 }}
-          SSH_HOST: ${{ secrets.VPS_HOST }}
-          SSH_USER: ${{ secrets.VPS_USER }}
+        id: deploy
         run: |
-          scp -P "$SSH_PORT" -i "$SSH_KEY" \
-            deploy/deploy_production.sh \
-            "${SSH_USER}@${SSH_HOST}:/tmp/deploy_production.sh"
+          set -euo pipefail
+          SSH_OPTS=(-o StrictHostKeyChecking=yes -o "UserKnownHostsFile=${HOME}/.ssh/known_hosts" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=15)
+          scp -P "${SSH_PORT}" -i "${HOME}/.ssh/deploy_key" "${SSH_OPTS[@]}" \
+            deploy/deploy_production.sh "${SSH_USER}@${SSH_HOST}:/tmp/eventflow_deploy.sh"
 
-          ssh -p "$SSH_PORT" -i "$SSH_KEY" "${SSH_USER}@${SSH_HOST}" \
-            "chmod +x /tmp/deploy_production.sh && bash /tmp/deploy_production.sh '${{ steps.commit.outputs.sha }}'"
+          ssh -p "${SSH_PORT}" -i "${HOME}/.ssh/deploy_key" "${SSH_OPTS[@]}" "${SSH_USER}@${SSH_HOST}" \
+            "chmod +x /tmp/eventflow_deploy.sh && NEXT_PUBLIC_API_URL='${NEXT_PUBLIC_API_URL}' bash /tmp/eventflow_deploy.sh '${DEPLOY_SHA}'"
 
-      - name: Health check
-        env:
-          SSH_KEY: ~/.ssh/deploy_key
-          SSH_PORT: ${{ secrets.VPS_PORT || 22 }}
-          SSH_HOST: ${{ secrets.VPS_HOST }}
-          SSH_USER: ${{ secrets.VPS_USER }}
+      # --------------------------------------------------------------
+      # Post-deployment verification ON the VPS: services, nginx -t,
+      # database + migration status, static files, media server, and the
+      # loopback smoke test. This validates that the deployment itself
+      # landed; the next step validates the live application from outside.
+      # --------------------------------------------------------------
+      - name: Post-deployment verification (on VPS)
+        id: verify
         run: |
-          # Talk to the processes directly (gunicorn :8000, next start
-          # :3000) so the check does not depend on nginx server_name /
-          # Host headers. 127.0.0.1 is always in ALLOWED_HOSTS.
-          ssh -p "$SSH_PORT" -i "$SSH_KEY" "${SSH_USER}@${SSH_HOST}" \
-            "bash /home/eventflow/eventflow/deploy/scripts/smoke_test.sh http://127.0.0.1:8000 http://127.0.0.1:3000 http://127.0.0.1:8080"
+          set -euo pipefail
+          SSH_OPTS=(-o StrictHostKeyChecking=yes -o "UserKnownHostsFile=${HOME}/.ssh/known_hosts" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=15)
+          ssh -p "${SSH_PORT}" -i "${HOME}/.ssh/deploy_key" "${SSH_OPTS[@]}" "${SSH_USER}@${SSH_HOST}" \
+            "bash /home/eventflow/eventflow/deploy/scripts/post_deploy_verify.sh"
 
-      - name: Report success
-        if: success()
-        run: echo "Deployment successful — commit ${{ steps.commit.outputs.sha }}"
+      # --------------------------------------------------------------
+      # Live application test FROM the GitHub runner over the public
+      # address (frontend, health, readiness incl. DB/Redis, API auth).
+      # Distinct from the step above: that one proves the deployment
+      # landed, this one proves end users can actually use the app.
+      # --------------------------------------------------------------
+      - name: Live application test (from GitHub runner)
+        id: live
+        env:
+          BASE_URL: ${{ vars.PUBLIC_BASE_URL || format('http://{0}', secrets.VPS_HOST) }}
+        run: |
+          set -euo pipefail
+          BASE_URL="${BASE_URL%/}"
+          expect() {
+            local label="$1" path="$2" want="$3" code="000"
+            for attempt in 1 2 3 4 5; do
+              # curl prints 000 itself when the connection fails.
+              code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "${BASE_URL}${path}" 2>/dev/null || true)
+              code="${code:-000}"
+              if [ "${code}" = "${want}" ]; then
+                echo "[OK] ${label} → ${code}"
+                return 0
+              fi
+              sleep 6
+            done
+            echo "[FAIL] ${label} → ${code} (expected ${want}) at ${BASE_URL}${path}"
+            return 1
+          }
+          failed=0
+          expect "frontend HTML"        "/"                  "200" || failed=1
+          expect "backend /health/"     "/health/"           "200" || failed=1
+          expect "backend /ready/ (DB+Redis)" "/ready/"      "200" || failed=1
+          expect "API requires auth"    "/api/v1/tenants/"   "401" || failed=1
+          if [ "${failed}" -ne 0 ]; then
+            echo "::error::Live application test failed for ${BASE_URL} — the deployment may have landed, but the app is not healthy end to end."
+            exit 1
+          fi
+          echo "Live application test passed: ${BASE_URL}"
+
+      - name: Write deployment summary
+        if: always()
+        env:
+          DEPLOY_OUTCOME: ${{ steps.deploy.outcome }}
+          VERIFY_OUTCOME: ${{ steps.verify.outcome }}
+          LIVE_OUTCOME: ${{ steps.live.outcome }}
+          PUBLIC_URL: ${{ vars.PUBLIC_BASE_URL || format('http://{0}', secrets.VPS_HOST) }}
+        run: |
+          {
+            echo "## Production deployment"
+            echo ""
+            echo "| Stage | Result | Meaning |"
+            echo "|---|---|---|"
+            echo "| Deployment (deploy_production.sh) | \`${DEPLOY_OUTCOME}\` | Code, migrations, services on the VPS |"
+            echo "| On-VPS verification | \`${VERIFY_OUTCOME}\` | Services, nginx, DB migrations, static/media |"
+            echo "| Live application test (external) | \`${LIVE_OUTCOME}\` | ${PUBLIC_URL} usable end to end |"
+            echo ""
+            echo "- Commit: \`${DEPLOY_SHA}\`"
+            echo "- Lock: concurrency group \`eventflow-production\` (queued, never cancelled)"
+            echo ""
+            echo "### Rollback (run on the VPS as user \`eventflow\`)"
+            echo '```bash'
+            echo "cd /home/eventflow/eventflow"
+            echo "git log --oneline -5                 # pick the previous good commit"
+            echo "git checkout <PREVIOUS_SHA> && git reset --hard HEAD"
+            echo "bash /home/eventflow/eventflow/deploy/deploy_production.sh"
+            echo "```"
+            echo ""
+            echo "Backups: \`/home/eventflow/backups\` (\`deploy/scripts/backup.sh\`, cron-managed; restore with \`restore.sh\`)."
+          } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Report failure
         if: failure()
-        run: echo "::error::Deployment failed for commit ${{ steps.commit.outputs.sha }}"
+        run: echo "::error::Deployment pipeline failed for commit ${DEPLOY_SHA} — see the failed step above. Nothing is rolled back automatically; use the rollback commands in the job summary."

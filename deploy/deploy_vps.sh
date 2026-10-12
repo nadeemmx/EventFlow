@@ -177,6 +177,10 @@ REDIS_URL=redis://127.0.0.1:6379/0
 ENCRYPTION_KEY=${ENCRYPTION_KEY}
 CORS_ALLOWED_ORIGINS=http://${VPS_IP}
 CSRF_TRUSTED_ORIGINS=http://${VPS_IP}
+# HTTP-only IP deployment (no TLS): browsers drop Secure cookies over plain
+# HTTP, which would break Django admin logins. API JWT auth is cookie-free.
+SESSION_COOKIE_SECURE=false
+CSRF_COOKIE_SECURE=false
 DEFAULT_FROM_EMAIL=noreply@eventflow.local
 # Frontend build input for deploy_production.sh (not a secret)
 NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
