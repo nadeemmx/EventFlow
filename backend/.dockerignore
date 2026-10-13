@@ -1,0 +1,22 @@
+# Never into the image: secrets, VCS, local envs, caches, data.
+.git
+.gitignore
+.env
+.env.*
+venv
+.venv
+**/__pycache__
+**/*.py[cod]
+**/*.sqlite3
+**/*.db
+**/*.log
+logs
+**/logs
+.pytest_cache
+.mypy_cache
+.coverage
+htmlcov
+staticfiles
+media
+Dockerfile
+.dockerignore

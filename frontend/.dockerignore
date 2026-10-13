@@ -1,0 +1,13 @@
+# Never into the image: secrets/env files, VCS, build output, caches.
+.git
+.gitignore
+node_modules
+.next
+out
+.env
+.env.*
+*.local
+coverage
+npm-debug.log*
+Dockerfile
+.dockerignore

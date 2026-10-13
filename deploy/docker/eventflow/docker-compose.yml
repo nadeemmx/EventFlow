@@ -1,0 +1,207 @@
+# EventFlow — production Docker Compose stack (per-product project).
+#
+# One Compose project per Baseify SaaS product. This file owns ONLY
+# EventFlow: its app stack, its private networks, its data volumes.
+# Future products (RentFlow, Lawnify, …) get their own directory, project
+# name, networks and volumes — see docs/SAAS_ONBOARDING.md.
+#
+# Topology (single published surface = nginx; nothing else is exposed):
+#
+#   Internet ──► nginx :80 (app/API)  :8080 (public media allowlist)
+#                  │  proxy network (default project network)
+#                  ├──► backend:8000 (Gunicorn/Django)
+#                  └──► frontend:3000 (next start)
+#   backend ──► mariadb:3306   ┐ internal network (internal: true —
+#   backend ──► redis:6379     ┘ no host ports, no internet egress)
+#
+# Secrets live in an env file OUTSIDE the repository (default:
+# /srv/baseify/eventflow/.env, passed with --env-file). Never commit it.
+#
+# Run (from the VPS checkout):
+#   docker compose --env-file /srv/baseify/eventflow/.env config -q
+#   docker compose --env-file /srv/baseify/eventflow/.env up -d
+
+name: eventflow
+
+services:
+  mariadb:
+    image: mariadb:11.4
+    restart: unless-stopped
+    stop_grace_period: 30s
+    environment:
+      MARIADB_DATABASE: ${DB_NAME:-eventflow}
+      MARIADB_USER: ${DB_USER:-eventflow}
+      MARIADB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      # Root is for local maintenance only (unix-socket inside the
+      # container); the app uses the least-privilege MARIADB_USER.
+      MARIADB_RANDOM_ROOT_PASSWORD: "yes"
+      MARIADB_AUTO_UPGRADE: "1"
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --max-connections=100
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    mem_limit: 1024m
+    logging: &default_logging
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    # Required by production settings (cache/throttle/brute-force protection):
+    # config/settings/production.py refuses to start without REDIS_URL.
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --requirepass
+      - ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      - --maxmemory
+      - 256mb
+      # Pure cache semantics (Django sessions are signed cookies). Under
+      # memory pressure the least recently used keys are evicted.
+      - --maxmemory-policy
+      - allkeys-lru
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning ping | grep -q PONG"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    mem_limit: 256m
+    logging: *default_logging
+
+  backend:
+    build:
+      context: ../../../backend
+      dockerfile: Dockerfile
+    # Images are tagged with the deployed commit SHA by deploy_compose.sh
+    # (rollback = start the previous tag again).
+    image: eventflow-backend:${EVENTFLOW_TAG:-local}
+    restart: unless-stopped
+    init: true
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.production
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?DJANGO_SECRET_KEY is required}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?ENCRYPTION_KEY is required}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:?DJANGO_ALLOWED_HOSTS is required}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
+      # IP-only HTTP test mode — see docs/DOCKER_DEPLOYMENT.md §Security:
+      # flip both to true (and SECURE_HSTS_PRELOAD) once HTTPS exists.
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+      CSRF_COOKIE_SECURE: ${CSRF_COOKIE_SECURE:-false}
+      SECURE_HSTS_PRELOAD: ${SECURE_HSTS_PRELOAD:-false}
+      # In-cluster addresses — never taken from the env file.
+      DB_HOST: mariadb
+      DB_PORT: "3306"
+      DB_NAME: ${DB_NAME:-eventflow}
+      DB_USER: ${DB_USER:-eventflow}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379/0
+      EMAIL_HOST: ${EMAIL_HOST:-}
+      EMAIL_PORT: ${EMAIL_PORT:-587}
+      EMAIL_HOST_USER: ${EMAIL_HOST_USER:-}
+      EMAIL_HOST_PASSWORD: ${EMAIL_HOST_PASSWORD:-}
+      EMAIL_USE_TLS: ${EMAIL_USE_TLS:-true}
+      DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL:-noreply@eventflow.com}
+      JWT_ACCESS_TOKEN_LIFETIME: ${JWT_ACCESS_TOKEN_LIFETIME:-60}
+      JWT_REFRESH_TOKEN_LIFETIME: ${JWT_REFRESH_TOKEN_LIFETIME:-1440}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+    volumes:
+      - ${EVENTFLOW_MEDIA_DIR:-/srv/baseify/eventflow/media}:/home/eventflow/media
+    networks:
+      - default
+      - internal
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/live/', timeout=4)"]
+      interval: 30s
+      timeout: 6s
+      retries: 5
+      start_period: 40s
+    mem_limit: 640m
+    logging: *default_logging
+
+  frontend:
+    build:
+      context: ../../../frontend
+      dockerfile: Dockerfile
+      args:
+        # Inlined into the browser bundle at build time; deploy_compose.sh
+        # refuses to build when this is empty.
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
+    image: eventflow-frontend:${EVENTFLOW_TAG:-local}
+    restart: unless-stopped
+    init: true
+    networks:
+      - default
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 6s
+      retries: 5
+      start_period: 25s
+    mem_limit: 512m
+    logging: *default_logging
+
+  nginx:
+    image: nginx:1.26-alpine
+    restart: unless-stopped
+    ports:
+      # The ONLY published ports of this product. 8080 = public media
+      # allowlist (same split as the legacy IP-based host config).
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      # Replaces the image's default.conf (this file contains the http-level
+      # directives: upstreams, limit_req_zone, both server blocks).
+      - ./nginx/eventflow.conf:/etc/nginx/conf.d/default.conf:ro
+      # Same host directory the backend writes to, read-only for nginx.
+      - ${EVENTFLOW_MEDIA_DIR:-/srv/baseify/eventflow/media}:/home/eventflow/media:ro
+    networks:
+      - default
+    depends_on:
+      backend:
+        condition: service_started
+      frontend:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/nginx-health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    mem_limit: 128m
+    logging: *default_logging
+
+networks:
+  default:
+    # Product-scoped bridge: nginx/backend/frontend can reach each other.
+  internal:
+    # Database + cache live only here: no published ports and, because
+    # `internal: true`, no egress from the container to the outside world.
+    internal: true
+
+volumes:
+  db_data:
+    # Explicit name so backup/restore scripts can address it.
+    name: eventflow_db_data

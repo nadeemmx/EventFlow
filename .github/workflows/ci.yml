@@ -233,3 +233,124 @@ jobs:
             grep -q '^ExecStart='  "${unit}" || { echo "::error::${unit}: missing ExecStart"; exit 1; }
             echo "OK: ${unit}"
           done
+
+  docker:
+    name: Docker images & Compose
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # The .env.example placeholders satisfy every required ${VAR:?…}
+      # interpolation — this validates the file structure without secrets.
+      - name: Compose configuration validates
+        run: |
+          set -euo pipefail
+          docker compose \
+            --env-file deploy/docker/eventflow/.env.example \
+            -f deploy/docker/eventflow/docker-compose.yml \
+            config -q
+          echo "OK: docker compose config (eventflow stack)"
+
+      - name: Hadolint (Dockerfiles, errors only)
+        run: |
+          set -euo pipefail
+          # Failure threshold "error": style/warning findings (e.g. unpinned
+          # apt package versions, which break across mirror snapshots) are
+          # reported by hadolint but do not fail the build.
+          docker run --rm -i hadolint/hadolint:v2.12.0 --failure-threshold error - < backend/Dockerfile
+          docker run --rm -i hadolint/hadolint:v2.12.0 --failure-threshold error - < frontend/Dockerfile
+          echo "OK: hadolint (no errors)"
+
+      - name: Nginx container config validates (nginx -t)
+        run: |
+          set -euo pipefail
+          if ! command -v nginx >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq nginx
+          fi
+          sudo systemctl stop nginx 2>/dev/null || sudo nginx -s stop 2>/dev/null || true
+          # nginx resolves `upstream server <name>` at startup — map the
+          # Docker service names to loopback for this config-only test.
+          echo "127.0.0.1 backend frontend" | sudo tee -a /etc/hosts >/dev/null
+          WORKDIR=$(mktemp -d)
+          {
+            echo "events { worker_connections 64; }"
+            echo "http {"
+            echo "    include ${GITHUB_WORKSPACE}/deploy/docker/eventflow/nginx/eventflow.conf;"
+            echo "}"
+          } > "${WORKDIR}/nginx.conf"
+          sudo nginx -t -c "${WORKDIR}/nginx.conf"
+          echo "OK: container nginx config passed nginx -t"
+
+      - name: Build backend image (tagged with SHA)
+        run: |
+          set -euo pipefail
+          docker build -t "eventflow-backend:ci-${GITHUB_SHA}" backend
+
+      - name: Build frontend image (tagged with SHA)
+        env:
+          # Build-arg only; next.config.mjs fails the build if it is
+          # missing. Override with repository variable NEXT_PUBLIC_API_URL.
+          NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL || 'http://194.77.89.95/api/v1' }}
+        run: |
+          set -euo pipefail
+          docker build \
+            --build-arg "NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}" \
+            -t "eventflow-frontend:ci-${GITHUB_SHA}" frontend
+
+      - name: Backend image smoke test (gunicorn + /live/)
+        run: |
+          set -euo pipefail
+          # Dummy non-secret settings: enough for production settings to
+          # import and gunicorn to serve; no DB/Redis reachable or needed
+          # for the liveness endpoint.
+          docker run -d --name ci-backend \
+            -e DJANGO_SECRET_KEY=ci-dummy-secret-key-ci-dummy-secret-key-0123456789 \
+            -e ENCRYPTION_KEY=ci-dummy-encryption-key \
+            -e DJANGO_ALLOWED_HOSTS=localhost \
+            -e DB_PASSWORD=ci-dummy \
+            -e REDIS_URL=redis://ci.invalid:6379/0 \
+            "eventflow-backend:ci-${GITHUB_SHA}"
+          ok=0
+          for _ in $(seq 1 20); do
+            if docker exec ci-backend python -c \
+              "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/live/', timeout=3)" \
+              >/dev/null 2>&1; then
+              ok=1
+              break
+            fi
+            sleep 3
+          done
+          if [ "${ok}" != "1" ]; then
+            echo "::error::backend image did not serve /live/ — logs:"
+            docker logs ci-backend
+            docker rm -f ci-backend
+            exit 1
+          fi
+          echo "OK: backend image serves /live/"
+          docker rm -f ci-backend
+
+      - name: Frontend image smoke test (next start + /)
+        run: |
+          set -euo pipefail
+          docker run -d --name ci-frontend "eventflow-frontend:ci-${GITHUB_SHA}"
+          ok=0
+          for _ in $(seq 1 20); do
+            if docker exec ci-frontend node -e \
+              "fetch('http://127.0.0.1:3000/').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))" \
+              >/dev/null 2>&1; then
+              ok=1
+              break
+            fi
+            sleep 3
+          done
+          if [ "${ok}" != "1" ]; then
+            echo "::error::frontend image did not serve / — logs:"
+            docker logs ci-frontend
+            docker rm -f ci-frontend
+            exit 1
+          fi
+          echo "OK: frontend image serves /"
+          docker rm -f ci-frontend
