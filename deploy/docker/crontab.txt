@@ -1,0 +1,40 @@
+# EventFlow — Docker cron jobs (deploy user; docker group access required)
+# Installed by deploy/bootstrap/bootstrap_vps.sh:
+#   crontab -u <deploy-user>  (marker-guarded, re-run safe)
+# Marker: eventflow-docker-cron-v1
+#
+# All jobs run one-off containers from the Compose project; they do not
+# touch the running app containers.
+#
+# Backend jobs go through compose_run.sh, not `docker compose` directly:
+# it resolves EVENTFLOW_TAG from the last deployed SHA (see scripts/lib.sh),
+# so scheduled commands run the image that is actually deployed instead of
+# the .env default "local".
+
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+COMPOSE="/srv/baseify/eventflow/repo/deploy/docker/scripts/compose_run.sh"
+LOGDIR=/srv/baseify/eventflow/logs
+
+# Send event reminders (daily 08:00)
+0 8 * * * $COMPOSE run --rm backend python manage.py send_event_reminders >> ${LOGDIR}/cron.log 2>&1
+
+# Expire tentative bookings (daily 00:00)
+0 0 * * * $COMPOSE run --rm backend python manage.py expire_tentative_bookings >> ${LOGDIR}/cron.log 2>&1
+
+# Update overdue payments (daily 01:00)
+0 1 * * * $COMPOSE run --rm backend python manage.py update_overdue_payments >> ${LOGDIR}/cron.log 2>&1
+
+# Generate scheduled reports (daily 06:00)
+0 6 * * * $COMPOSE run --rm backend python manage.py generate_scheduled_reports >> ${LOGDIR}/cron.log 2>&1
+
+# Send subscription reminders (weekly Monday 09:00)
+0 9 * * 1 $COMPOSE run --rm backend python manage.py send_subscription_reminders >> ${LOGDIR}/cron.log 2>&1
+
+# Cleanup old logs (weekly Sunday 03:00)
+0 3 * * 0 $COMPOSE run --rm backend python manage.py cleanup_old_logs >> ${LOGDIR}/cron.log 2>&1
+
+# Database + media backup (daily 02:00), 14-day retention
+0 2 * * * /srv/baseify/eventflow/repo/deploy/docker/scripts/backup.sh >> ${LOGDIR}/backup.log 2>&1
+
+# eventflow-docker-cron-v1

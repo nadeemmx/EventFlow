@@ -67,7 +67,8 @@ jobs:
             exit 1
           fi
           if [ -z "${NEXT_PUBLIC_API_URL}" ]; then
-            echo "::warning::Repository variable NEXT_PUBLIC_API_URL is not set. The VPS will fall back to frontend/.env.production or the backend .env (deploy_production.sh fails if neither exists)."
+            echo "::error::Repository variable NEXT_PUBLIC_API_URL is not set — the Docker frontend build requires it (deploy_compose.sh refuses to build without it)."
+            exit 1
           elif ! printf '%s' "${NEXT_PUBLIC_API_URL}" | grep -Eq '^https?://[A-Za-z0-9.:-]+(/[A-Za-z0-9._~%+:-]*)*$'; then
             echo "::error::variable NEXT_PUBLIC_API_URL must be an absolute http(s) URL, got: ${NEXT_PUBLIC_API_URL}"
             exit 1
@@ -149,26 +150,30 @@ jobs:
           fi
 
       # --------------------------------------------------------------
-      # Deploy through the existing non-Docker VPS workflow:
-      # deploy_production.sh (git reset to origin/master, rsync backend,
-      # migrate, collectstatic, next build, systemd restart, nginx -t,
-      # health checks, rollback instructions on failure).
+      # Docker Compose deployment (deploy_compose.sh): scp the script +
+      # shared lib to the VPS, then run it with the SHA to deploy. The
+      # script clones/updates the repo, validates the compose config,
+      # builds images tagged with the SHA, applies migrations explicitly,
+      # switches the stack, health-gates through nginx and auto-rolls
+      # back to the previous known-good tag on failure.
       # --------------------------------------------------------------
-      - name: Deploy backend and frontend
+      - name: Deploy (Docker Compose)
         id: deploy
         run: |
           set -euo pipefail
           SSH_OPTS=(-o StrictHostKeyChecking=yes -o "UserKnownHostsFile=${HOME}/.ssh/known_hosts" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=15)
           scp -P "${SSH_PORT}" -i "${HOME}/.ssh/deploy_key" "${SSH_OPTS[@]}" \
-            deploy/deploy_production.sh "${SSH_USER}@${SSH_HOST}:/tmp/eventflow_deploy.sh"
+            deploy/docker/deploy_compose.sh deploy/docker/scripts/lib.sh \
+            "${SSH_USER}@${SSH_HOST}:/tmp/"
 
           ssh -p "${SSH_PORT}" -i "${HOME}/.ssh/deploy_key" "${SSH_OPTS[@]}" "${SSH_USER}@${SSH_HOST}" \
-            "chmod +x /tmp/eventflow_deploy.sh && NEXT_PUBLIC_API_URL='${NEXT_PUBLIC_API_URL}' bash /tmp/eventflow_deploy.sh '${DEPLOY_SHA}'"
+            "chmod +x /tmp/deploy_compose.sh && NEXT_PUBLIC_API_URL='${NEXT_PUBLIC_API_URL}' bash /tmp/deploy_compose.sh '${DEPLOY_SHA}'"
 
       # --------------------------------------------------------------
-      # Post-deployment verification ON the VPS: services, nginx -t,
-      # database + migration status, static files, media server, and the
-      # loopback smoke test. This validates that the deployment itself
+      # Post-deployment verification ON the VPS (verify.sh, from the
+      # deployed checkout): container health states, nginx -t in the
+      # container, HTTP behavior through nginx, migration state, media
+      # mount writability, image tags. This validates that the deployment
       # landed; the next step validates the live application from outside.
       # --------------------------------------------------------------
       - name: Post-deployment verification (on VPS)
@@ -177,7 +182,7 @@ jobs:
           set -euo pipefail
           SSH_OPTS=(-o StrictHostKeyChecking=yes -o "UserKnownHostsFile=${HOME}/.ssh/known_hosts" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=15)
           ssh -p "${SSH_PORT}" -i "${HOME}/.ssh/deploy_key" "${SSH_OPTS[@]}" "${SSH_USER}@${SSH_HOST}" \
-            "bash /home/eventflow/eventflow/deploy/scripts/post_deploy_verify.sh"
+            "bash /srv/baseify/eventflow/repo/deploy/docker/scripts/verify.sh"
 
       # --------------------------------------------------------------
       # Live application test FROM the GitHub runner over the public
@@ -227,28 +232,28 @@ jobs:
           PUBLIC_URL: ${{ vars.PUBLIC_BASE_URL || format('http://{0}', secrets.VPS_HOST) }}
         run: |
           {
-            echo "## Production deployment"
+            echo "## Production deployment (Docker Compose)"
             echo ""
             echo "| Stage | Result | Meaning |"
             echo "|---|---|---|"
-            echo "| Deployment (deploy_production.sh) | \`${DEPLOY_OUTCOME}\` | Code, migrations, services on the VPS |"
-            echo "| On-VPS verification | \`${VERIFY_OUTCOME}\` | Services, nginx, DB migrations, static/media |"
+            echo "| Deployment (deploy_compose.sh) | \`${DEPLOY_OUTCOME}\` | Images, migrations, stack on the VPS |"
+            echo "| On-VPS verification | \`${VERIFY_OUTCOME}\` | Containers healthy, nginx, migrations, media |"
             echo "| Live application test (external) | \`${LIVE_OUTCOME}\` | ${PUBLIC_URL} usable end to end |"
             echo ""
-            echo "- Commit: \`${DEPLOY_SHA}\`"
+            echo "- Commit: \`${DEPLOY_SHA}\` (images tagged \`eventflow-{backend,frontend}:\${SHA}\`)"
             echo "- Lock: concurrency group \`eventflow-production\` (queued, never cancelled)"
             echo ""
-            echo "### Rollback (run on the VPS as user \`eventflow\`)"
+            echo "### Rollback (run on the VPS as the deploy user)"
             echo '```bash'
-            echo "cd /home/eventflow/eventflow"
-            echo "git log --oneline -5                 # pick the previous good commit"
-            echo "git checkout <PREVIOUS_SHA> && git reset --hard HEAD"
-            echo "bash /home/eventflow/eventflow/deploy/deploy_production.sh"
+            echo "cd /srv/baseify/eventflow/repo"
+            echo "deploy/docker/scripts/rollback.sh            # → previous known-good SHA"
+            echo "deploy/docker/scripts/rollback.sh <SHA>      # → an explicit earlier SHA"
             echo '```'
             echo ""
-            echo "Backups: \`/home/eventflow/backups\` (\`deploy/scripts/backup.sh\`, cron-managed; restore with \`restore.sh\`)."
+            echo "Backups: \`/srv/baseify/eventflow/backups\` (\`backup.sh\`, cron 02:00, 14-day retention; restore with \`restore.sh db|media <file> --yes\`)."
           } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Report failure
         if: failure()
-        run: echo "::error::Deployment pipeline failed for commit ${DEPLOY_SHA} — see the failed step above. Nothing is rolled back automatically; use the rollback commands in the job summary."
+        run: |
+          echo "::error::Deployment pipeline failed for commit ${DEPLOY_SHA} — see the failed step above. deploy_compose.sh auto-rolls back to the previous known-good tag when its own health gate fails; for failures after that gate (e.g. on-VPS verification or the live test) use the rollback commands in the job summary."
