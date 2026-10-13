@@ -242,16 +242,67 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # The VPS checkout is a sparse bundle of exactly these three paths
+      # (deploy_compose.sh / bootstrap_vps.sh). Build and smoke-test that
+      # bundle — not the full workspace — so CI proves a deploy cannot
+      # depend on files the server will never have on disk.
+      - name: Deployment bundle (sparse checkout)
+        run: |
+          set -euo pipefail
+          BUNDLE=/tmp/eventflow-bundle
+          rm -rf "$BUNDLE"
+          git clone --quiet --no-checkout "$GITHUB_WORKSPACE" "$BUNDLE"
+          git -C "$BUNDLE" sparse-checkout init --no-cone
+          git -C "$BUNDLE" sparse-checkout set /backend/ /frontend/ /deploy/docker/
+          git -C "$BUNDLE" checkout --quiet
+
+          required=(
+            backend/Dockerfile
+            backend/.dockerignore
+            backend/requirements/production.txt
+            frontend/Dockerfile
+            frontend/.dockerignore
+            frontend/package.json
+            frontend/package-lock.json
+            frontend/next.config.mjs
+            frontend/public/.gitkeep
+            deploy/docker/deploy_compose.sh
+            deploy/docker/crontab.txt
+            deploy/docker/eventflow/docker-compose.yml
+            deploy/docker/eventflow/nginx/eventflow.conf
+            deploy/docker/eventflow/.env.example
+            deploy/docker/scripts/lib.sh
+            deploy/docker/scripts/compose_run.sh
+            deploy/docker/scripts/verify.sh
+            deploy/docker/scripts/backup.sh
+            deploy/docker/scripts/restore.sh
+            deploy/docker/scripts/rollback.sh
+          )
+          for f in "${required[@]}"; do
+            [ -f "${BUNDLE}/${f}" ] || { echo "::error::sparse bundle is missing ${f}"; exit 1; }
+          done
+          excluded=(
+            mobile_app backend-build docs .github \
+            deploy/deploy_production.sh deploy/deploy_vps.sh deploy/deploy.sh \
+            deploy/bootstrap deploy/scripts deploy/systemd
+          )
+          for d in "${excluded[@]}"; do
+            [ ! -e "${BUNDLE}/${d}" ] || { echo "::error::sparse bundle must not contain ${d}"; exit 1; }
+          done
+          files=$(find "$BUNDLE" -path "$BUNDLE/.git" -prune -o -type f -print | wc -l)
+          echo "OK: sparse bundle (${files} files, excluded mobile_app/backend-build/docs/legacy deploy)"
+          echo "BUNDLE_DIR=${BUNDLE}" >> "$GITHUB_ENV"
+
       # The .env.example placeholders satisfy every required ${VAR:?…}
       # interpolation — this validates the file structure without secrets.
       - name: Compose configuration validates
         run: |
           set -euo pipefail
           docker compose \
-            --env-file deploy/docker/eventflow/.env.example \
-            -f deploy/docker/eventflow/docker-compose.yml \
+            --env-file "${BUNDLE_DIR}/deploy/docker/eventflow/.env.example" \
+            -f "${BUNDLE_DIR}/deploy/docker/eventflow/docker-compose.yml" \
             config -q
-          echo "OK: docker compose config (eventflow stack)"
+          echo "OK: docker compose config (eventflow stack, sparse bundle)"
 
       - name: Hadolint (Dockerfiles, errors only)
         run: |
@@ -291,7 +342,7 @@ jobs:
       - name: Build backend image (tagged with SHA)
         run: |
           set -euo pipefail
-          docker build -t "eventflow-backend:ci-${GITHUB_SHA}" backend
+          docker build -t "eventflow-backend:ci-${GITHUB_SHA}" "${BUNDLE_DIR}/backend"
 
       - name: Build frontend image (tagged with SHA)
         env:
@@ -302,7 +353,8 @@ jobs:
           set -euo pipefail
           docker build \
             --build-arg "NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}" \
-            -t "eventflow-frontend:ci-${GITHUB_SHA}" frontend
+            -t "eventflow-frontend:ci-${GITHUB_SHA}" \
+            "${BUNDLE_DIR}/frontend"
 
       - name: Backend image smoke test (gunicorn + /live/)
         run: |

@@ -141,6 +141,31 @@ def test_frontend_image_bakes_the_api_origin_next_start_revalidates():
     )
 
 
+def test_sparse_bundle_patterns_are_identical_wherever_they_appear():
+    """The VPS checkout is a sparse bundle of exactly three paths.
+    bootstrap_vps.sh, deploy_compose.sh and the CI bundle guard each spell
+    the pattern list out; drift between them would either hide a file the
+    server needs or materialise one it must not have."""
+    sources = {
+        "deploy/bootstrap/bootstrap_vps.sh": (
+            REPO_ROOT / "deploy" / "bootstrap" / "bootstrap_vps.sh"
+        ).read_text(),
+        "deploy/docker/deploy_compose.sh": (DOCKER / "deploy_compose.sh").read_text(),
+        ".github/workflows/ci.yml": (
+            REPO_ROOT / ".github" / "workflows" / "ci.yml"
+        ).read_text(),
+    }
+    for name, src in sources.items():
+        assert "sparse-checkout init --no-cone" in src, (
+            f"{name} must initialise a non-cone sparse checkout (cone mode "
+            "cannot express the /deploy/docker/ subset)"
+        )
+        assert "sparse-checkout set /backend/ /frontend/ /deploy/docker/" in src, (
+            f"{name} must set the deployment-bundle patterns to exactly "
+            "/backend/ /frontend/ /deploy/docker/"
+        )
+
+
 def test_production_settings_write_into_the_chowned_log_directory():
     """The Dockerfile fix is only correct because production settings write
     exactly there — pin the coupling so a LOGS_DIR change fails here first."""

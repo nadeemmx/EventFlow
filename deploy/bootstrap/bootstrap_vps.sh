@@ -34,6 +34,17 @@ log()  { printf '[bootstrap] %s\n' "$*"; }
 fail() { printf '[bootstrap] ERROR: %s\n' "$*" >&2; exit 1; }
 warn() { printf '[bootstrap] WARN: %s\n' "$*" >&2; }
 
+# Run a command as the deploy user (root owns this script; the checkout must
+# not end up root-owned). runuser is util-linux (always present on Ubuntu);
+# sudo is the fallback.
+as_deploy() {
+    if command -v runuser >/dev/null 2>&1; then
+        runuser -u "$DEPLOY_USER" -- "$@"
+    else
+        sudo -u "$DEPLOY_USER" -- "$@"
+    fi
+}
+
 [ "$(id -u)" -eq 0 ] || fail "run as root (sudo bash $0 …)"
 
 DEPLOY_USER="deploy"
@@ -274,6 +285,19 @@ else
         chown -R "$DEPLOY_USER:$DEPLOY_USER" "$REPO_DIR"
         log "repository cloned to ${REPO_DIR}"
     fi
+fi
+
+# Deployment bundle: only backend/, frontend/ and deploy/docker/ are
+# materialised on the VPS. Full git history is kept, so rollback.sh can still
+# check out any earlier deploy-era SHA; mobile_app/, backend-build/, docs/,
+# .github/ and the legacy deploy scripts are never written to disk. Applied as
+# the deploy user so ownership stays correct, and idempotent — it also
+# converges a checkout made before sparse checkout existed. Keep the pattern
+# list in sync with deploy_compose.sh and the CI bundle guard.
+if [ -d "${REPO_DIR}/.git" ]; then
+    as_deploy git -C "$REPO_DIR" sparse-checkout init --no-cone
+    as_deploy git -C "$REPO_DIR" sparse-checkout set /backend/ /frontend/ /deploy/docker/
+    log "sparse checkout applied: /backend/ /frontend/ /deploy/docker/"
 fi
 
 # -----------------------------------------------------------------------------
