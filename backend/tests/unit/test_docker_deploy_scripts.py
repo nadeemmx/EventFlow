@@ -121,6 +121,26 @@ def test_dockerfile_context_copy_sources_are_tracked_in_git():
             )
 
 
+def test_frontend_image_bakes_the_api_origin_next_start_revalidates():
+    """`next.config.mjs` runs validateApiUrl() at config-load time, so
+    `next start` in the runner image needs NEXT_PUBLIC_API_URL present even
+    though the browser bundle already has it inlined. A build-arg alone is
+    not enough: the runner stage must ENV it, or the container dies on boot."""
+    runner = FRONTEND_DOCKERFILE.read_text().split("AS runner", 1)[-1]
+    arg = runner.find("ARG NEXT_PUBLIC_API_URL")
+    env = runner.find("ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}")
+    assert arg != -1, "frontend/Dockerfile runner stage must declare the ARG"
+    assert env != -1, (
+        "frontend/Dockerfile runner stage must ENV NEXT_PUBLIC_API_URL — "
+        "`next start` re-validates it and would refuse to boot without it"
+    )
+    assert arg < env, "the ARG must precede the ENV that consumes it"
+    assert "validateApiUrl();" in (FRONTEND / "next.config.mjs").read_text(), (
+        "if next.config.mjs ever stops validating at load time, the ENV in "
+        "the runner stage can be dropped — update this test with it"
+    )
+
+
 def test_production_settings_write_into_the_chowned_log_directory():
     """The Dockerfile fix is only correct because production settings write
     exactly there — pin the coupling so a LOGS_DIR change fails here first."""

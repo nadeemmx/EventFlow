@@ -38,6 +38,14 @@ ENV NODE_ENV=production \
     PORT=3000 \
     HOSTNAME=0.0.0.0
 
+# NEXT_PUBLIC_* is inlined into the browser bundle at build time, but
+# next.config.mjs re-runs validateApiUrl() every time `next start` loads the
+# config, so a runtime container without the origin dies on boot. Bake the
+# value in: it is already public (it ships inside the JS bundle) and a
+# runtime override could never retarget the client anyway.
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+
 # Production dependencies only.
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
