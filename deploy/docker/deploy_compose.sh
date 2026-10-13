@@ -55,6 +55,13 @@ if ! git cat-file -e "${TAG}^{commit}" 2>/dev/null; then
     fail "commit ${TAG} not found after fetch — was it pushed to master?"
 fi
 
+# Deployment bundle: keep full history (rollback.sh checks out earlier SHAs)
+# but only materialise the two build contexts and the Compose tree. Also
+# converges a checkout that predates sparse checkout; re-runs are idempotent.
+# Keep the pattern list in sync with bootstrap_vps.sh and the CI bundle guard.
+git sparse-checkout init --no-cone
+git sparse-checkout set /backend/ /frontend/ /deploy/docker/
+
 LAST_GOOD="$(cat "${STATE_DIR}/.current_sha" 2>/dev/null || true)"
 log "deploying ${TAG} (last known good: ${LAST_GOOD:-none})"
 git -c advice.detachedHead=false checkout --quiet --detach "$TAG"
