@@ -44,6 +44,8 @@ RUN npm ci --omit=dev && npm cache clean --force
 
 COPY --from=build --chown=node:node /app/.next ./.next
 COPY --from=build --chown=node:node /app/next.config.mjs ./next.config.mjs
+# public/ ships empty today but must stay in git (public/.gitkeep): a COPY
+# source that is absent from the build context fails the whole image build.
 COPY --chown=node:node public ./public
 
 # The `node` user (uid 1000) ships with the base image — never run as root.

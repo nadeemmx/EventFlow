@@ -31,12 +31,28 @@ import pytest
 # backend/tests/unit/this_file.py -> repo root is parents[3]
 REPO_ROOT = Path(__file__).resolve().parents[3]
 BACKEND = REPO_ROOT / "backend"
+FRONTEND = REPO_ROOT / "frontend"
 DOCKER = REPO_ROOT / "deploy" / "docker"
 SCRIPTS = DOCKER / "scripts"
 
 DOCKERFILE = BACKEND / "Dockerfile"
+FRONTEND_DOCKERFILE = FRONTEND / "Dockerfile"
 DOCKERIGNORE = BACKEND / ".dockerignore"
 LIB = SCRIPTS / "lib.sh"
+
+
+def _context_copy_sources(dockerfile: Path):
+    """Yield the sources of every COPY that reads from the build context.
+
+    `COPY --from=<stage>` is skipped: those read another stage, not the
+    checkout, so they do not depend on what git tracks.
+    """
+    for line in dockerfile.read_text().splitlines():
+        line = line.strip()
+        if not line.startswith("COPY ") or "--from=" in line:
+            continue
+        tokens = [t for t in line[len("COPY "):].split() if not t.startswith("--")]
+        yield from tokens[:-1]  # the last token is the destination
 
 
 # ---------------------------------------------------------------------------
@@ -82,6 +98,27 @@ def test_host_logs_are_dockerignored_so_the_image_chown_is_load_bearing():
     assert "logs" in patterns, "backend/.dockerignore must exclude the host logs/ tree"
     assert "**/logs" in patterns
     assert "chown -R app:app /app/logs" in DOCKERFILE.read_text()
+
+
+def test_dockerfile_context_copy_sources_are_tracked_in_git():
+    """A COPY source that exists only on a developer's disk breaks the image
+    build on a fresh checkout. Git does not track empty directories, so
+    `COPY public ./public` silently relied on an uncommitted `public/`."""
+    for dockerfile in (DOCKERFILE, FRONTEND_DOCKERFILE):
+        base = dockerfile.parent
+        for source in _context_copy_sources(dockerfile):
+            if source in {".", "./"}:
+                continue
+            rel = (base / source).resolve().relative_to(REPO_ROOT)
+            tracked = subprocess.run(
+                ["git", "ls-files", "--", str(rel)],
+                cwd=REPO_ROOT, capture_output=True, text=True, check=False,
+            ).stdout.strip()
+            assert tracked, (
+                f"{dockerfile.relative_to(REPO_ROOT)}: COPY source {source!r} "
+                f"({rel}) is not tracked by git, so a CI checkout would not "
+                "contain it and the image build would fail"
+            )
 
 
 def test_production_settings_write_into_the_chowned_log_directory():
