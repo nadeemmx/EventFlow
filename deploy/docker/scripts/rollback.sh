@@ -6,9 +6,11 @@ set -euo pipefail
 #   rollback.sh              # → .previous_sha (last known good)
 #   rollback.sh <commit-sha> # → an explicit earlier SHA
 #
-# Requirements: images for the target tag must already exist on this host
-# (they do for any tag previously deployed here). The repo checkout is moved
-# to the target SHA so compose/config match the running images.
+# The images of the target tag are PULLED from the container registry (the
+# server never builds). A locally built image of the same commit is accepted
+# as a fallback, so a rollback across the migration from "build on the VPS"
+# to GHCR still works. The repo checkout is moved to the target SHA so
+# compose/config match the running images.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib.sh
@@ -25,11 +27,6 @@ git cat-file -e "${TARGET}^{commit}" 2>/dev/null || fail "commit ${TARGET} not f
 # state file's still-current SHA.
 export EVENTFLOW_TAG="$TARGET"
 
-for img in eventflow-backend eventflow-frontend; do
-    docker image inspect "${img}:${TARGET}" >/dev/null 2>&1 \
-        || fail "image ${img}:${TARGET} not present — cannot roll back to it (only previously deployed tags are available)"
-done
-
 CURRENT="$(cat "${STATE_DIR}/.current_sha" 2>/dev/null || true)"
 if [ "$CURRENT" = "$TARGET" ]; then
     fail "already running ${TARGET}"
@@ -39,6 +36,22 @@ log "rolling back: ${CURRENT:-unknown} → ${TARGET}"
 git -c advice.detachedHead=false checkout --quiet --detach "$TARGET"
 
 compose config -q || fail "compose config invalid at ${TARGET}"
+
+# Pull the exact images of the target commit. Without this the rollback would
+# depend on the images still being on disk, which is not guaranteed now that
+# every deploy pulls what it needs.
+#
+# The digests are optional: export EVENTFLOW_EXPECTED_BACKEND_DIGEST /
+# EVENTFLOW_EXPECTED_FRONTEND_DIGEST to pin them (the deploy workflow passes
+# the digests of the commit it deploys; the auto-rollback inside
+# deploy_compose.sh must NOT reuse them — they belong to the failed commit).
+if ! pull_app_images "$TARGET" allow-legacy-local \
+        "${EVENTFLOW_EXPECTED_BACKEND_DIGEST:-}" \
+        "${EVENTFLOW_EXPECTED_FRONTEND_DIGEST:-}" \
+        no; then
+    fail "no image available for ${TARGET} — cannot roll back to it (the commit must have been published to the registry)"
+fi
+
 compose up -d
 nginx_reload
 

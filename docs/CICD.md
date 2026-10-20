@@ -1,5 +1,16 @@
 # EventFlow CI/CD Pipeline
 
+> **Outdated for the production flow.** This file describes the *legacy*
+> systemd/host deployment (Passenger, host-level `npm ci`, static export).
+> The production deployment is the **Docker Compose stack on the VPS with
+> images built in CI and pulled from GitHub Container Registry** — see
+> [`docs/DOCKER_DEPLOYMENT.md`](DOCKER_DEPLOYMENT.md) (architecture, GHCR
+> setup in §6, rollback, day-2 operations) and
+> `.github/workflows/{ci,deploy}.yml`.
+> The legacy scripts still in the repository (`deploy/deploy_production.sh`,
+> `deploy/deploy_vps.sh`, `deploy/scripts/`) are **not** used by the
+> production deploy.
+
 ## Architecture
 
 ```
