@@ -17,8 +17,15 @@
 # Secrets live in an env file OUTSIDE the repository (default:
 # /srv/baseify/eventflow/.env, passed with --env-file). Never commit it.
 #
+# The application images are NOT built here: CI builds them and pushes them
+# to the container registry; this host pulls
+# ${EVENTFLOW_REGISTRY:-ghcr.io}/nadeemmx/eventflow-{backend,frontend}:<sha>.
+# The tag is the deployed commit SHA, so a rollback is "pull the previous
+# SHA tag" — no rebuild, no npm ci on the server.
+#
 # Run (from the VPS checkout):
 #   docker compose --env-file /srv/baseify/eventflow/.env config -q
+#   docker compose --env-file /srv/baseify/eventflow/.env pull backend frontend
 #   docker compose --env-file /srv/baseify/eventflow/.env up -d
 
 name: eventflow
@@ -86,12 +93,13 @@ services:
     logging: *default_logging
 
   backend:
-    build:
-      context: ../../../backend
-      dockerfile: Dockerfile
-    # Images are tagged with the deployed commit SHA by deploy_compose.sh
-    # (rollback = start the previous tag again).
-    image: eventflow-backend:${EVENTFLOW_TAG:-local}
+    # NO `build:` section: the image is BUILT AND PUBLISHED by CI
+    # (.github/workflows/ci.yml) and PULLED by the VPS. Building on the
+    # server exhausted its 9.8 GB disk during the Next.js build.
+    # The tag is the deployed commit SHA (immutable): rollback = pull the
+    # previous SHA tag again. The registry host is configurable through
+    # EVENTFLOW_REGISTRY (default ghcr.io) in the external env file.
+    image: ${EVENTFLOW_REGISTRY:-ghcr.io}/nadeemmx/eventflow-backend:${EVENTFLOW_TAG:-local}
     restart: unless-stopped
     init: true
     environment:
@@ -142,14 +150,11 @@ services:
     logging: *default_logging
 
   frontend:
-    build:
-      context: ../../../frontend
-      dockerfile: Dockerfile
-      args:
-        # Inlined into the browser bundle at build time; deploy_compose.sh
-        # refuses to build when this is empty.
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
-    image: eventflow-frontend:${EVENTFLOW_TAG:-local}
+    # NO `build:` section (see the backend service): CI builds the image
+    # with NEXT_PUBLIC_API_URL baked into the bundle and the VPS pulls it.
+    # deploy_compose.sh verifies the pulled image carries the expected API
+    # origin (label io.eventflow.next-public-api-url).
+    image: ${EVENTFLOW_REGISTRY:-ghcr.io}/nadeemmx/eventflow-frontend:${EVENTFLOW_TAG:-local}
     restart: unless-stopped
     init: true
     networks:

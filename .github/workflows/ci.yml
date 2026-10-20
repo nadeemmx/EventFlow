@@ -237,7 +237,25 @@ jobs:
   docker:
     name: Docker images & Compose
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
+    # packages: write is needed to publish the images to GitHub Container
+    # Registry. The publish step itself only runs for a push to master —
+    # a pull request never pushes, and the build context never sees the
+    # token (it is only used by the registry login).
+    permissions:
+      contents: read
+      packages: write
+
+    env:
+      # GHCR namespace. GHCR rejects uppercase repository names, so the
+      # owner is validated below before it is used in a tag.
+      IMAGE_OWNER: ${{ github.repository_owner }}
+      IMAGE_REGISTRY: ghcr.io
+      # Only a push to master publishes images. Pull requests build and
+      # smoke-test locally, but never push.
+      IS_RELEASE: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
+      # Build input for the frontend image (baked into the browser bundle).
+      NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL || 'http://194.77.89.95/api/v1' }}
 
     steps:
       - uses: actions/checkout@v7
@@ -293,6 +311,25 @@ jobs:
           echo "OK: sparse bundle (${files} files, excluded mobile_app/backend-build/docs/legacy deploy)"
           echo "BUNDLE_DIR=${BUNDLE}" >> "$GITHUB_ENV"
 
+      # ---- image coordinates ----------------------------------------------
+      # The tag is the commit SHA: immutable, and the same value the VPS
+      # deploys and rolls back to. The owner must be lowercase (GHCR
+      # rejects uppercase repository names).
+      - name: Validate image coordinates
+        run: |
+          set -euo pipefail
+          printf '%s' "${IMAGE_OWNER}" | grep -Eq '^[a-z0-9][a-z0-9._-]*$' || {
+            echo "::error::IMAGE_OWNER (${IMAGE_OWNER}) must be lowercase for GHCR"
+            exit 1
+          }
+          printf '%s' "${GITHUB_SHA}" | grep -Eq '^[0-9a-f]{40}$' || {
+            echo "::error::GITHUB_SHA is not a full commit SHA: ${GITHUB_SHA}"
+            exit 1
+          }
+          echo "BACKEND_IMAGE=${IMAGE_REGISTRY}/${IMAGE_OWNER}/eventflow-backend:${GITHUB_SHA}"  >> "$GITHUB_ENV"
+          echo "FRONTEND_IMAGE=${IMAGE_REGISTRY}/${IMAGE_OWNER}/eventflow-frontend:${GITHUB_SHA}" >> "$GITHUB_ENV"
+          echo "OK: ${IMAGE_REGISTRY}/${IMAGE_OWNER}/eventflow-{backend,frontend}:${GITHUB_SHA}"
+
       # The .env.example placeholders satisfy every required ${VAR:?…}
       # interpolation — this validates the file structure without secrets.
       - name: Compose configuration validates
@@ -303,6 +340,34 @@ jobs:
             -f "${BUNDLE_DIR}/deploy/docker/eventflow/docker-compose.yml" \
             config -q
           echo "OK: docker compose config (eventflow stack, sparse bundle)"
+
+      # The VPS pulls the images — it must never build them. A `build:`
+      # section left in the compose file would let a deploy fall back to
+      # building on the 9.8 GB server, which is exactly what broke.
+      - name: Compose does not build the application images
+        run: |
+          set -euo pipefail
+          compose_file="${BUNDLE_DIR}/deploy/docker/eventflow/docker-compose.yml"
+          if grep -Eq '^[[:space:]]+build:' "$compose_file"; then
+            echo "::error::the compose file still has a build: section — the VPS must pull, never build"
+            exit 1
+          fi
+          resolved="$(docker compose \
+            --env-file "${BUNDLE_DIR}/deploy/docker/eventflow/.env.example" \
+            -f "$compose_file" \
+            config --images)"
+          printf '%s\n' "$resolved" | grep -q "eventflow-backend:local" || {
+            echo "::error::the backend image does not resolve to the registry reference:"
+            printf '%s\n' "$resolved"
+            exit 1
+          }
+          printf '%s\n' "$resolved" | grep -q "eventflow-frontend:local" || {
+            echo "::error::the frontend image does not resolve to the registry reference:"
+            printf '%s\n' "$resolved"
+            exit 1
+          }
+          echo "OK: application images are pulled, not built"
+          printf '%s\n' "$resolved"
 
       - name: Hadolint (Dockerfiles, errors only)
         run: |
@@ -339,22 +404,60 @@ jobs:
           sudo nginx -t -c "${WORKDIR}/nginx.conf"
           echo "OK: container nginx config passed nginx -t"
 
-      - name: Build backend image (tagged with SHA)
-        run: |
-          set -euo pipefail
-          docker build -t "eventflow-backend:ci-${GITHUB_SHA}" "${BUNDLE_DIR}/backend"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
 
-      - name: Build frontend image (tagged with SHA)
-        env:
-          # Build-arg only; next.config.mjs fails the build if it is
-          # missing. Override with repository variable NEXT_PUBLIC_API_URL.
-          NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL || 'http://194.77.89.95/api/v1' }}
+      # Both images are built from the sparse bundle (the same context the
+      # VPS checkout provides) and are LOADED into the runner's daemon, so
+      # the smoke tests below run against exactly the image that is
+      # published afterwards.
+      - name: Build backend image
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ env.BUNDLE_DIR }}/backend
+          file: ${{ env.BUNDLE_DIR }}/backend/Dockerfile
+          tags: ${{ env.BACKEND_IMAGE }}
+          build-args: |
+            GIT_SHA=${{ github.sha }}
+          load: true
+          # Reading the cache is always allowed; WRITING it is not allowed
+          # for a pull request from a fork (the cache service answers 403),
+          # so the export only happens for a push to master.
+          cache-from: type=gha
+          cache-to: ${{ env.IS_RELEASE == 'true' && 'type=gha,mode=max' || '' }}
+
+      - name: Build frontend image
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ env.BUNDLE_DIR }}/frontend
+          file: ${{ env.BUNDLE_DIR }}/frontend/Dockerfile
+          tags: ${{ env.FRONTEND_IMAGE }}
+          build-args: |
+            GIT_SHA=${{ github.sha }}
+            NEXT_PUBLIC_API_URL=${{ env.NEXT_PUBLIC_API_URL }}
+          load: true
+          # Reading the cache is always allowed; WRITING it is not allowed
+          # for a pull request from a fork (the cache service answers 403),
+          # so the export only happens for a push to master.
+          cache-from: type=gha
+          cache-to: ${{ env.IS_RELEASE == 'true' && 'type=gha,mode=max' || '' }}
+
+      # The images must carry the commit they were built from — the VPS
+      # refuses to run an image whose revision label does not match the
+      # commit it is deploying.
+      - name: Images carry their commit revision
         run: |
           set -euo pipefail
-          docker build \
-            --build-arg "NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}" \
-            -t "eventflow-frontend:ci-${GITHUB_SHA}" \
-            "${BUNDLE_DIR}/frontend"
+          for ref in "$BACKEND_IMAGE" "$FRONTEND_IMAGE"; do
+            revision="$(docker image inspect \
+              --format '{{ if .Config.Labels }}{{ index .Config.Labels "org.opencontainers.image.revision" }}{{ end }}' \
+              "$ref")"
+            if [ "$revision" != "${GITHUB_SHA}" ]; then
+              echo "::error::${ref} carries revision '${revision}', expected ${GITHUB_SHA}"
+              exit 1
+            fi
+          done
+          echo "OK: both images carry revision ${GITHUB_SHA}"
 
       - name: Backend image smoke test (gunicorn + /live/)
         run: |
@@ -368,7 +471,7 @@ jobs:
             -e DJANGO_ALLOWED_HOSTS=localhost \
             -e DB_PASSWORD=ci-dummy \
             -e REDIS_URL=redis://ci.invalid:6379/0 \
-            "eventflow-backend:ci-${GITHUB_SHA}"
+            "$BACKEND_IMAGE"
           ok=0
           for _ in $(seq 1 20); do
             if docker exec ci-backend python -c \
@@ -391,7 +494,7 @@ jobs:
       - name: Frontend image smoke test (next start + /)
         run: |
           set -euo pipefail
-          docker run -d --name ci-frontend "eventflow-frontend:ci-${GITHUB_SHA}"
+          docker run -d --name ci-frontend "$FRONTEND_IMAGE"
           ok=0
           for _ in $(seq 1 20); do
             if docker exec ci-frontend node -e \
@@ -410,3 +513,78 @@ jobs:
           fi
           echo "OK: frontend image serves /"
           docker rm -f ci-frontend
+
+      # ---- publish ---------------------------------------------------------
+      # Only a push to master publishes. The token is the workflow's own
+      # GITHUB_TOKEN (packages: write) — no long-lived credential is used
+      # and none is stored anywhere.
+      - name: Log in to GitHub Container Registry
+        if: env.IS_RELEASE == 'true'
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.IMAGE_REGISTRY }}
+          username: ${{ env.IMAGE_OWNER }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push images to GitHub Container Registry
+        if: env.IS_RELEASE == 'true'
+        run: |
+          set -euo pipefail
+          docker push "$BACKEND_IMAGE"
+          docker push "$FRONTEND_IMAGE"
+          # Pull once more so the local image records the manifest digest
+          # the registry serves — that digest is what the VPS verifies.
+          docker pull "$BACKEND_IMAGE"
+          docker pull "$FRONTEND_IMAGE"
+          echo "OK: pushed ${BACKEND_IMAGE} and ${FRONTEND_IMAGE}"
+
+      # The deploy workflow reads this artifact and makes the VPS verify
+      # the pulled images against these digests: the SHA tag is only
+      # "immutable" in practice if the bytes behind it are pinned too.
+      - name: Record image digests
+        if: env.IS_RELEASE == 'true'
+        run: |
+          set -euo pipefail
+          # The digest of the manifest the REGISTRY serves for this tag:
+          # the RepoDigest whose repository matches the image name. Picking
+          # the first RepoDigest would be wrong as soon as the daemon knows
+          # more than one repository for the same image.
+          digest_of() {
+            local ref="$1" repo
+            repo="${ref%:*}"
+            docker image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "$ref" \
+              | grep -F "${repo}@" | head -n 1 | sed 's/.*@//'
+          }
+          backend_digest="$(digest_of "$BACKEND_IMAGE")"
+          frontend_digest="$(digest_of "$FRONTEND_IMAGE")"
+          for d in "$backend_digest" "$frontend_digest"; do
+            printf '%s' "$d" | grep -Eq '^sha256:[0-9a-f]{64}$' || {
+              echo "::error::could not determine the registry digest of the published image: '${d}'"
+              exit 1
+            }
+          done
+          {
+            echo "GIT_SHA=${GITHUB_SHA}"
+            echo "BACKEND_IMAGE=${BACKEND_IMAGE}"
+            echo "BACKEND_DIGEST=${backend_digest}"
+            echo "FRONTEND_IMAGE=${FRONTEND_IMAGE}"
+            echo "FRONTEND_DIGEST=${frontend_digest}"
+          } > image-digests.env
+          {
+            echo "### Published images"
+            echo ""
+            echo "| Image | Tag | Digest |"
+            echo "|---|---|---|"
+            echo "| \`${BACKEND_IMAGE}\` | \`${GITHUB_SHA}\` | \`${backend_digest}\` |"
+            echo "| \`${FRONTEND_IMAGE}\` | \`${GITHUB_SHA}\` | \`${frontend_digest}\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload image digests
+        if: env.IS_RELEASE == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: image-digests
+          path: image-digests.env
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 90

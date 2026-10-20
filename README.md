@@ -781,23 +781,26 @@ npm run build
 # See cron-jobs.sh for all 5 scheduled tasks
 ```
 
-### VPS (recommended)
+### Docker Compose on the VPS (production)
 
-See `DEPLOYMENT.md` and `deploy/deploy_production.sh` for the supported
-systemd + nginx path (backend sync, `next build`/`next start`, media
-allowlist, health checks on `127.0.0.1:8000` / `127.0.0.1:3000`).
+The supported production path is the **Docker Compose stack**: CI builds
+and publishes the application images to GitHub Container Registry, the
+VPS pulls them and runs them with MariaDB, Redis and nginx.
 
 ```bash
-# From the repo root on the VPS (requires sudoers entries printed by the script)
-bash deploy/deploy_production.sh
+# The deployment itself is driven by GitHub Actions (merge to master →
+# approve the "production" environment → the deploy workflow runs).
+# See docs/DOCKER_DEPLOYMENT.md for the full runbook.
 ```
 
-### Docker (Future)
+- Architecture, GHCR setup, rollback and day-2 operations:
+  [`docs/DOCKER_DEPLOYMENT.md`](docs/DOCKER_DEPLOYMENT.md)
+- CI/CD pipeline: [`docs/CICD.md`](docs/CICD.md)
 
-```dockerfile
-# Dockerfile planned for containerized deployment
-# See roadmap
-```
+### systemd + nginx (legacy)
+
+The host-level deployment (`deploy/deploy_production.sh`, Passenger/systemd
+units) is the legacy path. It is not used by the production deploy.
 
 ---
 

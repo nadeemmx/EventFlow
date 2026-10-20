@@ -76,17 +76,35 @@ else
 fi
 
 # ---- 6. running images match the recorded deploy SHA -----------------------
+# The images are pulled from the container registry, so the reference is
+# <registry>/nadeemmx/eventflow-<service>:<sha>.
 current=$(cat "${STATE_DIR}/.current_sha" 2>/dev/null || echo "")
 if [ -n "$current" ]; then
-    for img in eventflow-backend eventflow-frontend; do
-        if docker image inspect "${img}:${current}" >/dev/null 2>&1; then
-            note "OK image ${img}:${current} present"
+    for svc in backend frontend; do
+        ref="$(app_image_ref "$svc")"
+        if docker image inspect "$ref" >/dev/null 2>&1; then
+            note "OK image ${ref} present"
         else
-            check_failed "image ${img}:${current} not found"
+            check_failed "image ${ref} not found"
         fi
     done
 else
     note "note: no .current_sha recorded yet"
+fi
+
+# ---- 6b. the running containers use exactly those images ------------------
+if [ -n "$current" ]; then
+    for svc in backend frontend; do
+        cid=$(compose ps -q "$svc" 2>/dev/null || true)
+        [ -n "$cid" ] || continue
+        running=$(docker inspect --format '{{.Config.Image}}' "$cid" 2>/dev/null || echo "")
+        expected="$(app_image_ref "$svc")"
+        if [ "$running" = "$expected" ]; then
+            note "OK ${svc} container runs ${running}"
+        else
+            check_failed "${svc} container runs ${running:-<unknown>} instead of ${expected}"
+        fi
+    done
 fi
 
 # ---- 7. one-off containers resolve to the deployed tag ---------------------

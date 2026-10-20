@@ -59,6 +59,15 @@ COPY --chown=node:node public ./public
 # The `node` user (uid 1000) ships with the base image — never run as root.
 USER node
 
+# Provenance: the commit this image was built from, plus the API origin that
+# was baked into the browser bundle. CI passes both as build arguments; the
+# VPS verifies them before starting the container.
+ARG GIT_SHA=""
+LABEL org.opencontainers.image.source="https://github.com/nadeemmx/EventFlow" \
+      org.opencontainers.image.description="EventFlow frontend (Next.js)" \
+      org.opencontainers.image.revision="${GIT_SHA}" \
+      io.eventflow.next-public-api-url="${NEXT_PUBLIC_API_URL}"
+
 EXPOSE 3000
 
 # Invoked exactly like the legacy systemd unit: node directly, not npm.

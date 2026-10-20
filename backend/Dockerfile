@@ -34,6 +34,14 @@ RUN python -m venv /opt/venv \
 
 FROM python:3.12-slim AS runtime
 
+# Provenance: the commit this image was built from. CI passes it as a build
+# argument; the VPS verifies the pulled image carries the SHA it is
+# deploying (and the deploy workflow verifies the registry digest).
+ARG GIT_SHA=""
+LABEL org.opencontainers.image.source="https://github.com/nadeemmx/EventFlow" \
+      org.opencontainers.image.description="EventFlow backend (Django + Gunicorn)" \
+      org.opencontainers.image.revision="${GIT_SHA}"
+
 # Runtime-only shared libraries: libmariadb3 (mysqlclient), libmagic1
 # (python-magic), tzdata (Django timezone handling).
 RUN apt-get update \
@@ -83,7 +91,11 @@ RUN DJANGO_SECRET_KEY=build-time-dummy-secret-key-not-used-at-runtime \
 # directory only ever exists as a build artifact — hand it (and anything
 # collectstatic wrote) to the runtime user, or gunicorn dies at django.setup()
 # with `Unable to configure handler 'file'` (EACCES on uid 10001).
-RUN mkdir -p /app/logs && chown -R app:app /app/logs
+# The log file itself is an empty artifact, not data: remove it so the
+# published image provably contains no log file (the runtime creates its own).
+RUN mkdir -p /app/logs \
+    && chown -R app:app /app/logs \
+    && rm -f /app/logs/*.log
 
 # Run as the unprivileged app user (never root at runtime).
 USER app

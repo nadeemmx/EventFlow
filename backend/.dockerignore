@@ -14,9 +14,11 @@ logs
 **/logs
 .pytest_cache
 .mypy_cache
+.ruff_cache
 .coverage
 htmlcov
 staticfiles
 media
+reports
 Dockerfile
 .dockerignore

@@ -232,6 +232,7 @@ JWT_ACCESS_TOKEN_LIFETIME=60
 JWT_REFRESH_TOKEN_LIFETIME=1440
 EVENTFLOW_TAG=local
 EVENTFLOW_MEDIA_DIR=${BASE_DIR}/eventflow/media
+EVENTFLOW_REGISTRY=ghcr.io
 EOF
     unset _secret_key _enc_key _db_password _redis_password
     chown "$DEPLOY_USER:$DEPLOY_USER" "$ENV_FILE"
@@ -251,7 +252,9 @@ else
 fi
 
 # -----------------------------------------------------------------------------
-# 7b. Swap — `next build` on a small VPS needs breathing room
+# 7b. Swap — the Next.js/Django runtime still needs breathing room. The
+#     image BUILD no longer happens here (CI builds and publishes it), so
+#     the swap only has to absorb the running containers.
 # -----------------------------------------------------------------------------
 if [ "$ENABLE_SWAP" -eq 1 ]; then
     if swapon --show | grep -q .; then
@@ -347,6 +350,12 @@ log "  firewall  : $(ufw status 2>/dev/null | head -1 || echo 'ufw not enabled')
 log "  next steps:"
 log "    1. Verify SSH:  ssh -p ${SSH_PORT} ${DEPLOY_USER}@<server-ip>   (must succeed)"
 log "    2. Optionally:  bash $0 --harden-ssh … (disable password auth)"
-log "    3. Deploy via the GitHub 'Deploy' workflow (approval gate required)."
-log "    4. When a domain exists: obtain TLS, update .env hosts/origins and"
+log "    3. Registry access for the pulled images (choose ONE):"
+log "       a) make the GHCR packages public (Settings → Packages →"
+log "          eventflow-backend → Change visibility → Public) — no credential"
+log "          on the server at all, or"
+log "       b) store a classic PAT with 'read:packages' in"
+log "          ${BASE_DIR}/eventflow/.ghcr-token (mode 0600, owner ${DEPLOY_USER})"
+log "    4. Deploy via the GitHub 'Deploy' workflow (approval gate required)."
+log "    5. When a domain exists: obtain TLS, update .env hosts/origins and"
 log "       set SESSION_COOKIE_SECURE/CSRF_COOKIE_SECURE/SECURE_HSTS_PRELOAD=true."
